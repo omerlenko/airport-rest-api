@@ -11,6 +11,9 @@ class Country(models.Model):
     name = models.CharField(max_length=100)
     iso_code = models.CharField(max_length=2, unique=True)
 
+    class Meta:
+        verbose_name_plural = "countries"
+
     def clean(self):
         if len(self.iso_code.strip()) != 2 or not self.iso_code.isalpha():
             raise ValidationError("ISO code must be exactly 2 alphabetic characters.")
@@ -29,6 +32,9 @@ class City(models.Model):
     name = models.CharField(max_length=100)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="cities")
     timezone = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name_plural = "cities"
 
     class Meta:
         unique_together = ("name", "country")
@@ -173,6 +179,7 @@ class SeatClass(models.Model):
 
     class Meta:
         ordering = ["priority"]
+        verbose_name_plural = "seat classes"
 
     def clean(self):
         if self.priority < 0:
