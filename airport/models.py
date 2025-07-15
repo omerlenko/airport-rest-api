@@ -34,10 +34,8 @@ class City(models.Model):
     timezone = models.CharField(max_length=100)
 
     class Meta:
-        verbose_name_plural = "cities"
-
-    class Meta:
         unique_together = ("name", "country")
+        verbose_name_plural = "cities"
 
     def clean(self):
         if self.timezone.strip() not in zoneinfo.available_timezones():
