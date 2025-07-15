@@ -155,13 +155,7 @@ class Flight(models.Model):
         airplane_flights = self.airplane.flights.exclude(pk=self.pk)
         for flight in airplane_flights:
             if flight.departure_time <= self.arrival_time and flight.arrival_time >= self.departure_time:
-                raise ValidationError("Cannot add flight, there's overlap in schedules for this airplane.")
-
-        for member in self.crew_members.all():
-            member_flights = member.flights.exclude(pk=self.pk)
-            for flight in member_flights:
-                if flight.departure_time <= self.arrival_time and flight.arrival_time >= self.departure_time:
-                    raise ValidationError(f"Cannot add flight, crew member {member} has a conflicting flight.")
+                raise ValidationError(f"Airplane {self.airplane} has another flight during this time.")
 
         if self.arrival_time <= self.departure_time:
             raise ValidationError("Arrival time cannot be sooner than departure time.")
@@ -211,7 +205,7 @@ class Ticket(models.Model):
     seat_class = models.ForeignKey(SeatClass, on_delete=models.CASCADE, related_name="tickets")
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="tickets")
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="tickets")
-    price = models.DecimalField(max_digits=7, decimal_places=2)
+    price = models.DecimalField(max_digits=7, decimal_places=2, blank=True)
 
     class Meta:
         unique_together = ("flight", "row", "seat")
