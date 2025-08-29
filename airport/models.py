@@ -67,11 +67,11 @@ class Airport(models.Model):
             raise ValidationError("Airport must have a city.")
         if not self.city.timezone:
             raise ValidationError("Associated city must have a timezone.")
-        if len(self.code.strip()) != 3:
-            raise ValidationError("Airport code must be exactly 3 characters long.")
+        if len(self.code.strip()) != 3 or not self.code.isalpha():
+            raise ValidationError("Airport code must be exactly 3 letters.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.name = self.name.strip()
         self.code = self.code.upper().strip()
         super().save(*args, **kwargs)
 
@@ -212,8 +212,14 @@ class Ticket(models.Model):
 
     @staticmethod
     def get_price(flight: Flight, seat_class: SeatClass) -> Decimal:
-        base_price = Decimal("0.1")
         distance = round(flight.route.distance)
+        base_price = Decimal("0.1")
+
+        if distance <= 500:
+            base_price *= 3
+        elif 501 <= distance <= 1500:
+            base_price *= 2
+
         seat_class_mult = seat_class.multiplier
         return Decimal(base_price * distance * seat_class_mult).quantize(Decimal("0.01"))
 
