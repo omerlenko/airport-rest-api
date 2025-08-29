@@ -14,6 +14,10 @@ from airport.models import (
     Flight
 )
 
+class TicketInline(admin.TabularInline):
+    model = Ticket
+    extra = 1
+
 admin.site.register(Country)
 admin.site.register(City)
 admin.site.register(Airport)
@@ -22,7 +26,6 @@ admin.site.register(CrewMember)
 admin.site.register(AirplaneType)
 admin.site.register(Airplane)
 admin.site.register(SeatClass)
-admin.site.register(Order)
 
 @admin.register(Flight)
 class FlightAdmin(admin.ModelAdmin):
@@ -31,3 +34,8 @@ class FlightAdmin(admin.ModelAdmin):
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
     readonly_fields = ("price",)
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    inlines = (TicketInline,)
+
