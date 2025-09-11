@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -19,7 +20,6 @@ class Country(models.Model):
             raise ValidationError("ISO code must be exactly 2 alphabetic characters.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         self.name = self.name.capitalize().strip()
         self.iso_code = self.iso_code.upper().strip()
         super().save(*args, **kwargs)
@@ -30,7 +30,7 @@ class Country(models.Model):
 
 class City(models.Model):
     name = models.CharField(max_length=100)
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="cities")
+    country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="cities")
     timezone = models.CharField(max_length=100)
 
     class Meta:
@@ -42,7 +42,6 @@ class City(models.Model):
             raise ValidationError("Timezone must be a valid IANA string, e.g. 'America/New_York'.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         self.name = self.name.capitalize().strip()
         super().save(*args, **kwargs)
 
@@ -52,7 +51,7 @@ class City(models.Model):
 
 class Airport(models.Model):
     name = models.CharField(max_length=100)
-    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="airports")
+    city = models.ForeignKey(City, on_delete=models.PROTECT, related_name="airports")
     code = models.CharField(max_length=3, unique=True)
 
     @property
@@ -80,8 +79,8 @@ class Airport(models.Model):
 
 
 class Route(models.Model):
-    source = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="source_routes")
-    destination = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="destination_routes")
+    source = models.ForeignKey(Airport, on_delete=models.PROTECT, related_name="source_routes")
+    destination = models.ForeignKey(Airport, on_delete=models.PROTECT, related_name="destination_routes")
     distance = models.IntegerField()
 
     def clean(self):
@@ -98,17 +97,35 @@ class CrewMember(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
 
-    def __str__(self):
+    @property
+    def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        self.first_name = self.first_name.capitalize().strip()
+        self.last_name = self.last_name.capitalize().strip()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.full_name
 
 
 class AirplaneType(models.Model):
     manufacturer = models.CharField(max_length=100)
     model = models.CharField(max_length=100)
 
-
     class Meta:
-        unique_together = ("manufacturer", "model")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["manufacturer", "model"],
+                name="unique_airplane_type"
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        self.manufacturer = self.manufacturer.strip()
+        self.model = self.model.strip()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.manufacturer} {self.model}"
@@ -116,18 +133,16 @@ class AirplaneType(models.Model):
 
 class Airplane(models.Model):
     tail_number = models.CharField(max_length=10, unique=True)
-    rows = models.IntegerField()
-    seats_in_row = models.IntegerField()
-    airplane_type = models.ForeignKey(AirplaneType, on_delete=models.CASCADE, related_name="airplanes")
+    rows = models.IntegerField(validators=[MinValueValidator(1, message='Rows must be at least 1.')])
+    seats_in_row = models.IntegerField(validators=[MinValueValidator(1, message='Seats per row must be at least 1.')])
+    airplane_type = models.ForeignKey(AirplaneType, on_delete=models.PROTECT, related_name="airplanes")
 
     def clean(self):
-        if not re.match(r"^[A-Z]{1,2}-?[A-Z0-9]{2,5}$", self.tail_number.strip()):
+        self.tail_number = self.tail_number.upper().strip()
+        if not re.match(r"^[A-Z]{1,2}-?[A-Z0-9]{2,5}$", self.tail_number):
             raise ValidationError("Tail number must be a valid registration format, like 'SP-LOT' or 'N12345'.")
-        if self.rows <= 0 or self.seats_in_row <= 0:
-            raise ValidationError("Rows and seats must be greater than 0.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         self.tail_number = self.tail_number.upper().strip()
         super().save(*args, **kwargs)
 
@@ -144,8 +159,8 @@ class Flight(models.Model):
         LANDED = "landed", "Landed"
         CANCELED = "canceled", "Canceled"
 
-    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name="flights")
-    airplane = models.ForeignKey(Airplane, on_delete=models.CASCADE, related_name="flights")
+    route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name="flights")
+    airplane = models.ForeignKey(Airplane, on_delete=models.PROTECT, related_name="flights")
     crew_members = models.ManyToManyField(CrewMember, related_name="flights")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
     departure_time = models.DateTimeField()
@@ -161,7 +176,7 @@ class Flight(models.Model):
             raise ValidationError("Arrival time cannot be sooner than departure time.")
 
     def __str__(self):
-        return f"{self.airplane}, {self.route}. Departing at {self.departure_time}, arriving at {self.arrival_time}"
+        return f"{self.route.source.code}→{self.route.destination.code} {self.airplane} [Departure: {self.departure_time:%Y-%m-%d %H:%M}]"
 
 
 class SeatClass(models.Model):
@@ -180,8 +195,7 @@ class SeatClass(models.Model):
             raise ValidationError("The seat price multiplier can not be less than 1.00.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        self.name = self.name.capitalize().strip()
+        self.name = self.name.title().strip()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -202,13 +216,18 @@ class Order(models.Model):
 class Ticket(models.Model):
     row = models.IntegerField()
     seat = models.IntegerField()
-    seat_class = models.ForeignKey(SeatClass, on_delete=models.CASCADE, related_name="tickets")
-    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="tickets")
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="tickets")
-    price = models.DecimalField(max_digits=7, decimal_places=2, blank=True)
+    seat_class = models.ForeignKey(SeatClass, on_delete=models.PROTECT, related_name="tickets")
+    flight = models.ForeignKey(Flight, on_delete=models.PROTECT, related_name="tickets")
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="tickets")
+    price = models.DecimalField(max_digits=7, decimal_places=2)
 
     class Meta:
-        unique_together = ("flight", "row", "seat")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["flight", "row", "seat"],
+                name="unique_ticket",
+            )
+        ]
 
     @staticmethod
     def get_price(flight: Flight, seat_class: SeatClass) -> Decimal:
@@ -232,7 +251,6 @@ class Ticket(models.Model):
             raise ValidationError(f"Seat {self.row}-{self.seat} exceeds available layout: {num_rows} rows, {num_seats} seats per row.")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         self.price = self.get_price(self.flight, self.seat_class)
         super().save(*args, **kwargs)
 
