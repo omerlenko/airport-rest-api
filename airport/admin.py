@@ -17,6 +17,7 @@ from airport.models import (
 class TicketInline(admin.TabularInline):
     model = Ticket
     extra = 1
+    readonly_fields = ("price",)
 
 admin.site.register(Country)
 admin.site.register(City)
