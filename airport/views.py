@@ -6,6 +6,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from airport.models import Country, City, Airport, Route, CrewMember, AirplaneType, Airplane, Flight, SeatClass, Order, \
     Ticket
+from airport.permissions import IsAdminOrIfAuthenticatedReadOnly, IsAdminOrReadOnly
 from airport.serializers import CountrySerializer, CitySerializer, AirportSerializer, AirportListSerializer, \
     AirportDetailSerializer, RouteSerializer, RouteListSerializer, RouteDetailSerializer, CrewMemberSerializer, \
     AirplaneTypeSerializer, AirplaneSerializer, AirplaneListSerializer, AirplaneDetailSerializer, FlightSerializer, \
@@ -16,16 +17,19 @@ from airport.serializers import CountrySerializer, CitySerializer, AirportSerial
 class CountryViewSet(ReadOnlyModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class CityViewSet(ReadOnlyModelViewSet):
     queryset = City.objects.select_related("country")
     serializer_class = CitySerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class AirportViewSet(ModelViewSet):
     queryset = Airport.objects.select_related("city", "city__country")
     serializer_class = AirportSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -46,6 +50,7 @@ class RouteViewSet(ModelViewSet):
         "destination__city__country"
     )
     serializer_class = RouteSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -59,16 +64,19 @@ class RouteViewSet(ModelViewSet):
 class CrewMemberViewSet(ModelViewSet):
     queryset = CrewMember.objects.all()
     serializer_class = CrewMemberSerializer
+    permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
 
 class AirplaneTypeViewSet(ModelViewSet):
     queryset = AirplaneType.objects.all()
     serializer_class = AirplaneTypeSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class AirplaneViewSet(ModelViewSet):
     queryset = Airplane.objects.select_related("airplane_type")
     serializer_class = AirplaneSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -94,6 +102,7 @@ class FlightViewSet(ModelViewSet):
         "crew_members",
     )
     serializer_class = FlightSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -107,6 +116,7 @@ class FlightViewSet(ModelViewSet):
 class SeatClassViewSet(ReadOnlyModelViewSet):
     queryset = SeatClass.objects.all()
     serializer_class = SeatClassSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class TicketViewSet(ReadOnlyModelViewSet):
@@ -121,7 +131,7 @@ class TicketViewSet(ReadOnlyModelViewSet):
         "order",
     )
     serializer_class = TicketSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         return super().get_queryset().filter(order__user=self.request.user)
@@ -147,7 +157,7 @@ class OrderViewSet(ModelViewSet):
         "tickets__flight__airplane",
         "tickets__flight__airplane__airplane_type",
     ).annotate(total_price=Sum("tickets__price"))
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == "list":
