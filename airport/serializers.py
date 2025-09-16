@@ -1,8 +1,6 @@
 import re
 
 from django.db import transaction
-from django.db.models import CharField, Sum
-from django.template.context_processors import request
 from django.utils.timezone import now
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
@@ -302,7 +300,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OrderListSerializer(OrderSerializer):
-    user = serializers.SlugRelatedField(many=False, read_only=True, slug_field="username")
+    user = serializers.SlugRelatedField(many=False, read_only=True, slug_field="email")
     total_price = serializers.DecimalField(read_only=True, max_digits=7, decimal_places=2, default=0)
 
     class Meta:
