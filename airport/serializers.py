@@ -208,7 +208,7 @@ class FlightMiniSerializer(FlightSerializer):
         model = Flight
         fields = ("id", "route", "airplane", "departure_time", "arrival_time")
 
-    def get_route(self, obj):
+    def get_route(self, obj) -> str:
         return f"{obj.route.source.code} → {obj.route.destination.code}"
 
 
@@ -220,7 +220,7 @@ class FlightMiniDetailSerializer(FlightMiniSerializer):
         model = Flight
         fields = ("id", "route", "airplane", "distance_km", "status", "departure_time", "arrival_time")
 
-    def get_distance_km(self, obj):
+    def get_distance_km(self, obj) -> int:
         return obj.route.distance
 
 
