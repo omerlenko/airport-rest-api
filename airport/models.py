@@ -14,6 +14,7 @@ class Country(models.Model):
 
     class Meta:
         verbose_name_plural = "countries"
+        ordering = ["name"]
 
     def clean(self):
         if len(self.iso_code.strip()) != 2 or not self.iso_code.isalpha():
@@ -36,6 +37,7 @@ class City(models.Model):
     class Meta:
         unique_together = ("name", "country")
         verbose_name_plural = "cities"
+        ordering = ["name"]
 
     def clean(self):
         if self.timezone.strip() not in zoneinfo.available_timezones():
@@ -83,6 +85,9 @@ class Route(models.Model):
     destination = models.ForeignKey(Airport, on_delete=models.PROTECT, related_name="destination_routes")
     distance = models.IntegerField()
 
+    class Meta:
+        ordering = ["distance"]
+
     def clean(self):
         if self.source == self.destination:
             raise ValidationError("Source and destination cannot be same.")
@@ -97,8 +102,11 @@ class CrewMember(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
 
+    class Meta:
+        ordering = ["last_name"]
+
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
     def save(self, *args, **kwargs):
@@ -166,6 +174,9 @@ class Flight(models.Model):
     departure_time = models.DateTimeField()
     arrival_time = models.DateTimeField()
 
+    class Meta:
+        ordering = ["departure_time"]
+
     def clean(self):
         airplane_flights = self.airplane.flights.exclude(pk=self.pk)
         for flight in airplane_flights:
@@ -222,6 +233,7 @@ class Ticket(models.Model):
     price = models.DecimalField(max_digits=7, decimal_places=2)
 
     class Meta:
+        ordering = ["-order__created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["flight", "row", "seat"],
