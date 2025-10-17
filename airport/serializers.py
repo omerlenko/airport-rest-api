@@ -121,7 +121,7 @@ class AirplaneSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Airplane
-        fields = ("id", "tail_number", "rows", "seats_in_row", "airplane_type")
+        fields = ("id", "airplane_type", "tail_number", "rows", "seats_in_row")
 
     def validate_tail_number(self, value):
         tail_number = value.strip().upper()
@@ -138,8 +138,14 @@ class AirplaneSerializer(serializers.ModelSerializer):
 
 
 class AirplaneListSerializer(AirplaneSerializer):
-    airplane_type = serializers.StringRelatedField()
+    airplane_type = serializers.SerializerMethodField(read_only=True)
 
+    class Meta:
+        model = Airplane
+        fields = ("id", "airplane_type", "tail_number")
+
+    def get_airplane_type(self, obj):
+        return obj.airplane_type.manufacturer + " " + obj.airplane_type.model
 
 class AirplaneDetailSerializer(AirplaneSerializer):
     airplane_type = AirplaneTypeSerializer(many=False, read_only=True)
@@ -149,6 +155,20 @@ class FlightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Flight
         fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "route" in self.fields:
+            self.fields["route"].queryset = Route.objects.select_related(
+                "source",
+                "source__city",
+                "source__city__country",
+                "destination",
+                "destination__city",
+                "destination__city__country",
+            )
+        if "airplane" in self.fields:
+            self.fields["airplane"].queryset = Airplane.objects.select_related("airplane_type")
 
     def validate(self, attrs):
         airplane = attrs.get("airplane", getattr(self.instance, "airplane", None))
@@ -186,30 +206,46 @@ class FlightSerializer(serializers.ModelSerializer):
 
 
 class FlightListSerializer(FlightSerializer):
-    route = serializers.StringRelatedField()
-    airplane = serializers.StringRelatedField()
+    route = RouteListSerializer(many=False, read_only=True)
+    airplane = AirplaneListSerializer(many=False, read_only=True)
     crew_members = serializers.SlugRelatedField(many=True, read_only=True, slug_field="full_name")
     status = serializers.CharField(source="get_status_display", read_only=True)
+    tickets_available = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Flight
+        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "tickets_available")
 
 
 class FlightDetailSerializer(FlightListSerializer):
     route = RouteDetailSerializer(many=False, read_only=True)
     airplane = AirplaneDetailSerializer(many=False, read_only=True)
     crew_members = CrewMemberSerializer(many=True, read_only=True)
-
-
-class FlightMiniSerializer(FlightSerializer):
-    route = serializers.SerializerMethodField()
-    departure_time = serializers.DateTimeField()
-    arrival_time = serializers.DateTimeField()
-    airplane = serializers.StringRelatedField()
+    taken_seats = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "departure_time", "arrival_time")
+        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "taken_seats")
 
-    def get_route(self, obj) -> str:
-        return f"{obj.route.source.code} → {obj.route.destination.code}"
+    def get_taken_seats(self, obj) -> list[dict]:
+        return [
+            {
+                "row": ticket.row,
+                "seat": ticket.seat
+            }
+            for ticket in obj.tickets.all()
+        ]
+
+
+class FlightMiniSerializer(FlightSerializer):
+    source = serializers.SlugRelatedField(many=False, read_only=True, source="route", slug_field="source.code")
+    destination = serializers.SlugRelatedField(many=False, read_only=True, source="route", slug_field="destination.code")
+    departure_time = serializers.DateTimeField()
+    arrival_time = serializers.DateTimeField()
+
+    class Meta:
+        model = Flight
+        fields = ("id", "source", "destination", "departure_time", "arrival_time")
 
 
 class FlightMiniDetailSerializer(FlightMiniSerializer):
