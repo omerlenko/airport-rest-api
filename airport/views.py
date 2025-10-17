@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from django.db.models import Sum, Count, F
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from rest_framework import status
@@ -297,7 +297,7 @@ class FlightViewSet(ModelViewSet):
       - departure_time (UTC lower bound, 'YYYY-MM-DD HH:MM')
       - departure_date (origin-local day if one origin; otherwise UTC day)
     """
-    queryset = Flight.objects.select_related(
+    queryset = (Flight.objects.select_related(
         "route",
         "route__source",
         "route__source__city",
@@ -306,10 +306,13 @@ class FlightViewSet(ModelViewSet):
         "route__destination__city",
         "route__destination__city__country",
         "airplane",
-        "airplane__airplane_type"
+        "airplane__airplane_type",
     ).prefetch_related(
         "crew_members",
-    )
+        "tickets",
+    ).annotate(
+        capacity=F("airplane__rows") * F("airplane__seats_in_row")
+    ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True)))
     serializer_class = FlightSerializer
     permission_classes = (IsAdminOrReadOnly,)
 
