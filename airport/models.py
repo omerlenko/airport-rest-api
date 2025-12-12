@@ -21,7 +21,8 @@ class Country(models.Model):
             raise ValidationError("ISO code must be exactly 2 alphabetic characters.")
 
     def save(self, *args, **kwargs):
-        self.name = self.name.capitalize().strip()
+        self.full_clean()
+        self.name = self.name.strip()
         self.iso_code = self.iso_code.upper().strip()
         super().save(*args, **kwargs)
 
@@ -44,7 +45,8 @@ class City(models.Model):
             raise ValidationError("Timezone must be a valid IANA string, e.g. 'America/New_York'.")
 
     def save(self, *args, **kwargs):
-        self.name = self.name.capitalize().strip()
+        self.full_clean()
+        self.name = self.name.strip()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -55,6 +57,9 @@ class Airport(models.Model):
     name = models.CharField(max_length=100)
     city = models.ForeignKey(City, on_delete=models.PROTECT, related_name="airports")
     code = models.CharField(max_length=3, unique=True)
+
+    class Meta:
+        unique_together = ("name", "city")
 
     @property
     def timezone(self):
@@ -72,6 +77,7 @@ class Airport(models.Model):
             raise ValidationError("Airport code must be exactly 3 letters.")
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         self.name = self.name.strip()
         self.code = self.code.upper().strip()
         super().save(*args, **kwargs)
@@ -93,6 +99,10 @@ class Route(models.Model):
             raise ValidationError("Source and destination cannot be same.")
         if self.distance <= 0:
             raise ValidationError("Route distance must be greater than 0 km.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.source} - {self.destination}, {self.distance} km"
@@ -151,6 +161,7 @@ class Airplane(models.Model):
             raise ValidationError("Tail number must be a valid registration format, like 'SP-LOT' or 'N12345'.")
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         self.tail_number = self.tail_number.upper().strip()
         super().save(*args, **kwargs)
 
@@ -186,6 +197,10 @@ class Flight(models.Model):
         if self.arrival_time <= self.departure_time:
             raise ValidationError("Arrival time cannot be sooner than departure time.")
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.route.source.code}→{self.route.destination.code} {self.airplane} [Departure: {self.departure_time:%Y-%m-%d %H:%M}]"
 
@@ -206,6 +221,7 @@ class SeatClass(models.Model):
             raise ValidationError("The seat price multiplier can not be less than 1.00.")
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         self.name = self.name.title().strip()
         super().save(*args, **kwargs)
 
@@ -263,6 +279,7 @@ class Ticket(models.Model):
             raise ValidationError(f"Seat {self.row}-{self.seat} exceeds available layout: {num_rows} rows, {num_seats} seats per row.")
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         self.price = self.get_price(self.flight, self.seat_class)
         super().save(*args, **kwargs)
 
