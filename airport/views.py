@@ -14,13 +14,15 @@ from airport.serializers import CountrySerializer, CitySerializer, AirportSerial
     AirportDetailSerializer, RouteSerializer, RouteListSerializer, RouteDetailSerializer, CrewMemberSerializer, \
     AirplaneTypeSerializer, AirplaneSerializer, AirplaneListSerializer, AirplaneDetailSerializer, FlightSerializer, \
     FlightListSerializer, FlightDetailSerializer, SeatClassSerializer, OrderSerializer, OrderListSerializer, \
-    OrderDetailSerializer, TicketSerializer, TicketListSerializer, TicketDetailSerializer
+    OrderDetailSerializer, TicketSerializer, TicketListSerializer, TicketDetailSerializer, CityListSerializer, \
+    CityDetailSerializer
 from airport.utils import params_to_ints, params_to_str, params_to_datetime, parse_date_range, params_to_decimal
 
 
-class CountryViewSet(ReadOnlyModelViewSet):
+class CountryViewSet(ModelViewSet):
     """
     Read-only access to countries.
+    Non-safe methods allowed for admin.
     No query parameters are supported.
     """
     queryset = Country.objects.all()
@@ -28,9 +30,10 @@ class CountryViewSet(ReadOnlyModelViewSet):
     permission_classes = (IsAdminOrReadOnly,)
 
 
-class CityViewSet(ReadOnlyModelViewSet):
+class CityViewSet(ModelViewSet):
     """
     Read-only access to cities.
+    Non-safe methods allowed for admin.
 
     Filters:
       - countries: array[int] — country IDs; comma-separated or repeated.
@@ -46,6 +49,14 @@ class CityViewSet(ReadOnlyModelViewSet):
         if countries_ids:
             queryset = queryset.filter(country__id__in=countries_ids)
         return queryset.distinct()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CityListSerializer
+        if self.action == "retrieve":
+            return CityDetailSerializer
+
+        return CitySerializer
 
     @extend_schema(
         parameters=[
