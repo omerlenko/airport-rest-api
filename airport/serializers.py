@@ -1,4 +1,5 @@
 import re
+import zoneinfo
 
 from django.db import transaction
 from django.utils.timezone import now
@@ -16,11 +17,22 @@ class CountrySerializer(serializers.ModelSerializer):
 
 
 class CitySerializer(serializers.ModelSerializer):
-    country = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
-
     class Meta:
         model = City
         fields = ("id", "name", "country", "timezone")
+
+    def validate_timezone(self, value):
+        if value.strip() not in zoneinfo.available_timezones():
+            raise serializers.ValidationError("Timezone must be a valid IANA string, e.g. 'America/New_York'.")
+        return value
+
+
+class CityListSerializer(CitySerializer):
+    country = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
+
+
+class CityDetailSerializer(CitySerializer):
+    country = CountrySerializer()
 
 
 class AirportSerializer(serializers.ModelSerializer):
@@ -48,7 +60,7 @@ class AirportListSerializer(AirportSerializer):
 
 
 class AirportDetailSerializer(AirportSerializer):
-    city = CitySerializer(many=False, read_only=True)
+    city = CityListSerializer(many=False, read_only=True)
 
 
 class RouteSerializer(serializers.ModelSerializer):
