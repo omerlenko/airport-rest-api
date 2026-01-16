@@ -155,6 +155,24 @@ class Airplane(models.Model):
     seats_in_row = models.IntegerField(validators=[MinValueValidator(1, message='Seats per row must be at least 1.')])
     airplane_type = models.ForeignKey(AirplaneType, on_delete=models.PROTECT, related_name="airplanes")
 
+    def generate_seats(self):
+        seat_class = {
+            "first": SeatClass.objects.get(priority=0),
+            "business": SeatClass.objects.get(priority=1),
+            "economy": SeatClass.objects.get(priority=2),
+        }
+
+        for row in range(1, self.rows + 1):
+            if row <= 4:
+                priority = "first"
+            elif 5 <= row <= 10:
+                priority = "business"
+            else:
+                priority = "economy"
+
+            for seat in range(1, self.seats_in_row + 1):
+                Seat.objects.create(airplane=self, row=row, seat_number=seat, seat_class=seat_class[priority])
+
     def clean(self):
         self.tail_number = self.tail_number.upper().strip()
         if not re.match(r"^[A-Z]{1,2}-?[A-Z0-9]{2,5}$", self.tail_number):
@@ -163,7 +181,10 @@ class Airplane(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         self.tail_number = self.tail_number.upper().strip()
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        if is_new:
+            self.generate_seats()
 
     def __str__(self):
         return f"{self.airplane_type} ({self.tail_number})"
@@ -216,7 +237,7 @@ class SeatClass(models.Model):
 
     def clean(self):
         if self.priority < 0:
-            raise ValidationError("Priority can not be negative.")
+            raise ValidationError("Priority can not be a negative integer.")
         if self.multiplier < Decimal("1.00"):
             raise ValidationError("The seat price multiplier can not be less than 1.00.")
 
@@ -227,6 +248,35 @@ class SeatClass(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Seat(models.Model):
+    airplane = models.ForeignKey(Airplane, on_delete=models.CASCADE, related_name="seats")
+    row = models.IntegerField()
+    seat_number = models.IntegerField()
+    seat_class = models.ForeignKey(SeatClass, on_delete=models.PROTECT, related_name="seats")
+
+    class Meta:
+        ordering = ["row", "seat_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["airplane", "row", "seat_number"],
+                name="unique_seat",
+            )
+        ]
+
+    def clean(self):
+        if self.row <= 0 or self.row > self.airplane.rows:
+            raise ValidationError(f"The row for this seat must be in range 1-{self.airplane.rows} ")
+        if self.seat_number <= 0 or self.seat_number > self.airplane.seats_in_row:
+            raise ValidationError(f"The seat number for this seat must be in range 1-{self.airplane.seats_in_row} ")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Row #{self.row}, Seat #{self.seat_number}, Class: {self.seat_class.name}"
 
 
 class Order(models.Model):
@@ -241,10 +291,8 @@ class Order(models.Model):
 
 
 class Ticket(models.Model):
-    row = models.IntegerField()
-    seat = models.IntegerField()
-    seat_class = models.ForeignKey(SeatClass, on_delete=models.PROTECT, related_name="tickets")
     flight = models.ForeignKey(Flight, on_delete=models.PROTECT, related_name="tickets")
+    seat = models.ForeignKey(Seat, on_delete=models.PROTECT, related_name="tickets")
     order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="tickets")
     price = models.DecimalField(max_digits=7, decimal_places=2)
 
@@ -252,13 +300,13 @@ class Ticket(models.Model):
         ordering = ["-order__created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["flight", "row", "seat"],
+                fields=["flight", "seat"],
                 name="unique_ticket",
             )
         ]
 
     @staticmethod
-    def get_price(flight: Flight, seat_class: SeatClass) -> Decimal:
+    def get_price(flight: Flight, seat: Seat) -> Decimal:
         distance = round(flight.route.distance)
         base_price = Decimal("0.1")
 
@@ -267,21 +315,17 @@ class Ticket(models.Model):
         elif 501 <= distance <= 1500:
             base_price *= 2
 
-        seat_class_mult = seat_class.multiplier
+        seat_class_mult = seat.seat_class.multiplier
         return Decimal(base_price * distance * seat_class_mult).quantize(Decimal("0.01"))
 
     def clean(self):
-        num_rows = self.flight.airplane.rows
-        num_seats = self.flight.airplane.seats_in_row
-        if self.row <= 0 or self.seat <= 0:
-            raise ValidationError("Seat or Row number can not be 0 or negative.")
-        if self.row > num_rows or self.seat > num_seats:
-            raise ValidationError(f"Seat {self.row}-{self.seat} exceeds available layout: {num_rows} rows, {num_seats} seats per row.")
+        if self.flight.airplane != self.seat.airplane:
+            raise ValidationError("Seat must be appropriate for this flight.")
 
     def save(self, *args, **kwargs):
+        self.price = self.get_price(self.flight, self.seat)
         self.full_clean()
-        self.price = self.get_price(self.flight, self.seat_class)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Ticket for {self.flight} Seat {self.row}-{self.seat}"
+        return f"Ticket for {self.flight} Seat {self.seat.row}-{self.seat.seat_number}"
