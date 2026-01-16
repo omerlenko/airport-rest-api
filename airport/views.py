@@ -1,21 +1,22 @@
+from rest_framework.decorators import action
 from django.db.models import Sum, Count, F
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-from rest_framework import status
+from rest_framework import status, mixins, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from airport.models import Country, City, Airport, Route, CrewMember, AirplaneType, Airplane, Flight, SeatClass, Order, \
-    Ticket
+    Ticket, Seat
 from airport.permissions import IsAdminOrIfAuthenticatedReadOnly, IsAdminOrReadOnly
 from airport.serializers import CountrySerializer, CitySerializer, AirportSerializer, AirportListSerializer, \
     AirportDetailSerializer, RouteSerializer, RouteListSerializer, RouteDetailSerializer, CrewMemberSerializer, \
     AirplaneTypeSerializer, AirplaneSerializer, AirplaneListSerializer, AirplaneDetailSerializer, FlightSerializer, \
     FlightListSerializer, FlightDetailSerializer, SeatClassSerializer, OrderSerializer, OrderListSerializer, \
     OrderDetailSerializer, TicketSerializer, TicketListSerializer, TicketDetailSerializer, CityListSerializer, \
-    CityDetailSerializer
+    CityDetailSerializer, SeatSerializer, SeatListSerializer, SeatDetailSerializer
 from airport.utils import params_to_ints, params_to_str, params_to_datetime, parse_date_range, params_to_decimal
 
 
@@ -390,6 +391,15 @@ class FlightViewSet(ModelViewSet):
 
         return queryset.distinct()
 
+    @action(detail=True, methods=["GET"])
+    def available_seats(self, request, *args, **kwargs):
+        flight = self.get_object()
+        all_seats = flight.airplane.seats.select_related("seat_class")
+        taken_seats_ids = Ticket.objects.filter(flight=flight).values_list("seat_id", flat=True)
+        available_seats = all_seats.exclude(id__in=taken_seats_ids)
+        serializer = SeatListSerializer(available_seats, many=True)
+        return Response(serializer.data)
+
     @extend_schema(
         summary="List flights with filtering",
         description=(
@@ -431,12 +441,40 @@ class FlightViewSet(ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-class SeatClassViewSet(ReadOnlyModelViewSet):
-    """Read-only access to seat classes (reference data). No filters."""
+class SeatClassViewSet(ModelViewSet):
     queryset = SeatClass.objects.all()
     serializer_class = SeatClassSerializer
     permission_classes = (IsAdminOrReadOnly,)
 
+
+class SeatViewSet(ReadOnlyModelViewSet):
+    queryset = Seat.objects.select_related(
+        "airplane",
+        "airplane__airplane_type",
+        "seat_class"
+    )
+    serializer_class = SeatSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return SeatListSerializer
+        if self.action == "retrieve":
+            return SeatDetailSerializer
+
+        return self.serializer_class
+
+    def get_queryset(self):
+        queryset = self.queryset
+        airplanes = params_to_ints(self.request.query_params, "airplanes")
+
+        if airplanes:
+            try:
+                queryset = queryset.filter(airplane__id__in=airplanes)
+            except ValueError:
+                raise ValidationError({"airplane": f"'{airplanes}' is not a valid integer"})
+
+        return queryset.distinct()
 
 class TicketViewSet(ReadOnlyModelViewSet):
     """
@@ -450,7 +488,10 @@ class TicketViewSet(ReadOnlyModelViewSet):
       - price_min / price_max: decimal strings — inclusive bounds; 'min' must not exceed 'max'.
     """
     queryset = Ticket.objects.select_related(
-        "seat_class",
+        "seat",
+        "seat__seat_class",
+        "seat__airplane",
+        "seat__airplane__airplane_type",
         "flight",
         "flight__route",
         "flight__route__source",
@@ -488,7 +529,7 @@ class TicketViewSet(ReadOnlyModelViewSet):
             queryset = queryset.filter(flight_id__in=flights)
 
         if seat_classes:
-            queryset = queryset.filter(seat_class__id__in=seat_classes)
+            queryset = queryset.filter(seat__seat_class__id__in=seat_classes)
 
         if price_min is not None and price_max is not None and price_min > price_max:
             raise ValidationError({"price": ["price_min cannot be greater than price_max"]})
@@ -566,21 +607,18 @@ class TicketViewSet(ReadOnlyModelViewSet):
         return super().list(request, *args, **kwargs)
 
 
-class OrderViewSet(ModelViewSet):
+class OrderViewSet(mixins.CreateModelMixin,
+                   mixins.ListModelMixin,
+                   mixins.RetrieveModelMixin,
+                   viewsets.GenericViewSet):
     """
     Manage orders for the authenticated user.
-    Results are always scoped to the current user. No query filters supported.
+    Results are always scoped to the current user.
+    No query filters supported.
     """
     serializer_class = OrderSerializer
     queryset = Order.objects.select_related(
         "user"
-    ).prefetch_related(
-        "tickets",
-        "tickets__seat_class",
-        "tickets__flight",
-        "tickets__flight__route",
-        "tickets__flight__airplane",
-        "tickets__flight__airplane__airplane_type",
     ).annotate(total_price=Sum("tickets__price"))
     permission_classes = (IsAuthenticated,)
 
@@ -593,6 +631,15 @@ class OrderViewSet(ModelViewSet):
         return self.serializer_class
 
     def get_queryset(self):
+        if self.action == "retrieve":
+            self.queryset = self.queryset.prefetch_related(
+        "tickets",
+        "tickets__seat",
+        "tickets__seat__seat_class",
+        "tickets__seat__airplane",
+        "tickets__flight",
+    )
+
         return super().get_queryset().filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
