@@ -11,7 +11,8 @@ from airport.models import (
     SeatClass,
     Ticket,
     Order,
-    Flight
+    Flight,
+    Seat,
 )
 
 class TicketInline(admin.TabularInline):
@@ -27,6 +28,7 @@ admin.site.register(CrewMember)
 admin.site.register(AirplaneType)
 admin.site.register(Airplane)
 admin.site.register(SeatClass)
+admin.site.register(Seat)
 
 @admin.register(Flight)
 class FlightAdmin(admin.ModelAdmin):
