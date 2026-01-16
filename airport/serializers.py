@@ -1,13 +1,14 @@
 import re
 import zoneinfo
-
-from django.db import transaction
+from decimal import Decimal
+from django.core.exceptions import ValidationError
+from django.db import transaction, IntegrityError
+from django.db.models import Q
 from django.utils.timezone import now
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-
 from airport.models import Country, City, Airport, Route, CrewMember, AirplaneType, Airplane, Flight, SeatClass, Order, \
-    Ticket
+    Ticket, Seat
 
 
 class CountrySerializer(serializers.ModelSerializer):
@@ -222,11 +223,12 @@ class FlightListSerializer(FlightSerializer):
     airplane = AirplaneListSerializer(many=False, read_only=True)
     crew_members = serializers.SlugRelatedField(many=True, read_only=True, slug_field="full_name")
     status = serializers.CharField(source="get_status_display", read_only=True)
+    capacity = serializers.IntegerField(read_only=True)
     tickets_available = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "tickets_available")
+        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "capacity", "tickets_available")
 
 
 class FlightDetailSerializer(FlightListSerializer):
@@ -237,13 +239,14 @@ class FlightDetailSerializer(FlightListSerializer):
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "taken_seats")
+        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time","capacity", "tickets_available", "taken_seats")
 
-    def get_taken_seats(self, obj) -> list[dict]:
+    @staticmethod
+    def get_taken_seats(obj) -> list[dict]:
         return [
             {
-                "row": ticket.row,
-                "seat": ticket.seat
+                "row": ticket.seat.row,
+                "seat": ticket.seat.seat_number
             }
             for ticket in obj.tickets.all()
         ]
@@ -266,7 +269,7 @@ class FlightMiniDetailSerializer(FlightMiniSerializer):
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "distance_km", "status", "departure_time", "arrival_time")
+        fields = ("id", "source", "destination", "airplane", "distance_km", "status", "departure_time", "arrival_time")
 
     def get_distance_km(self, obj) -> int:
         return obj.route.distance
@@ -277,39 +280,84 @@ class SeatClassSerializer(serializers.ModelSerializer):
         model = SeatClass
         fields = ("id", "name", "priority", "multiplier")
 
+    def validate(self, attrs):
+        priority = attrs.get("priority", getattr(self.instance, "priority", None))
+        multiplier = attrs.get("multiplier", getattr(self.instance, "multiplier", None))
+
+        if not priority and not multiplier:
+            return attrs
+
+        if priority < 0:
+            raise serializers.ValidationError("Priority can not be a negative integer.")
+        if multiplier < Decimal("1.00"):
+            raise serializers.ValidationError("The seat price multiplier can not be less than 1.00.")
+
+        return attrs
+
 
 class SeatClassMiniSerializer(SeatClassSerializer):
     class Meta:
         model = SeatClass
         fields = ("id", "name")
 
+
+class SeatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Seat
+        fields = ("id", "airplane", "row", "seat_number", "seat_class")
+
+    def validate(self, attrs):
+        airplane = attrs.get("airplane", getattr(self.instance, "airplane", None))
+        row = attrs.get("row", getattr(self.instance, "row", None))
+        seat_number = attrs.get("seat_number", getattr(self.instance, "seat_number", None))
+
+        if airplane is None or row is None or seat_number is None:
+            return attrs
+
+        if row <= 0 or row > airplane.rows:
+            raise ValidationError(f"The row for this seat must be in range 1-{airplane.rows} ")
+        if seat_number <= 0 or seat_number > airplane.seats_in_row:
+            raise ValidationError(f"The seat number for this seat must be in range 1-{airplane.seats_in_row} ")
+
+        return attrs
+
+
+class SeatListSerializer(SeatSerializer):
+    airplane = AirplaneListSerializer(many=False, read_only=True)
+    seat_class = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
+
+
+class SeatDetailSerializer(SeatListSerializer):
+    seat_class = SeatClassMiniSerializer(many=False, read_only=True)
+
+class SeatMiniSerializer(SeatListSerializer):
+    class Meta:
+        model = Seat
+        fields = ("id", "row", "seat_number", "seat_class")
+
+
 class TicketSerializer(serializers.ModelSerializer):
-    row = serializers.IntegerField(min_value=1)
-    seat = serializers.IntegerField(min_value=1)
+    order = serializers.PrimaryKeyRelatedField(read_only=True)
     price = serializers.DecimalField(max_digits=7, decimal_places=2, read_only=True)
 
     class Meta:
         model = Ticket
-        fields = ("id", "row", "seat", "seat_class", "flight", "price")
+        fields = ("id", "flight", "seat", "order", "price")
         validators = [
             UniqueTogetherValidator(
                 queryset=Ticket.objects.all(),
-                fields=["row", "seat", "flight"],
+                fields=["seat", "flight"],
                 message="This ticket has already been taken. Please choose from available tickets."
             )
         ]
 
     def validate(self, attrs):
-        seat = attrs.get("seat", getattr(self.instance, "seat", None))
-        row = attrs.get("row", getattr(self.instance, "row", None))
         flight = attrs.get("flight", getattr(self.instance, "flight", None))
+        seat = attrs.get("seat", getattr(self.instance, "seat", None))
 
-        if seat and row and flight:
-            seats_in_row = flight.airplane.seats_in_row
-            rows = flight.airplane.rows
-
-            if seat > seats_in_row or row > rows:
-                raise serializers.ValidationError(f"Seat and row must be in available range. Seats [1 - {seats_in_row}], Rows [1 - {rows}]")
+        if flight and seat:
+            if flight.airplane != seat.airplane:
+                raise serializers.ValidationError("Seat must be appropriate for this flight.")
 
             if flight.status != Flight.Status.SCHEDULED:
                 raise serializers.ValidationError(f"You cannot book this flight because its status is [{flight.get_status_display()}]")
@@ -321,12 +369,12 @@ class TicketSerializer(serializers.ModelSerializer):
 
 
 class TicketListSerializer(TicketSerializer):
-    seat_class = serializers.SlugRelatedField(read_only=True, many=False, slug_field="name")
+    seat = SeatMiniSerializer(many=False, read_only=True)
     flight = FlightMiniSerializer(read_only=True)
 
 
 class TicketDetailSerializer(TicketListSerializer):
-    seat_class = SeatClassMiniSerializer(many=False, read_only=True)
+    seat = SeatDetailSerializer(many=False, read_only=True)
     flight = FlightMiniDetailSerializer(many=False, read_only=True)
 
 
@@ -337,13 +385,36 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ("id", "created_at", "tickets")
 
+    def validate_tickets(self, tickets):
+        ticket_pairs = set()
+
+        for ticket in tickets:
+            pair = (ticket["flight"].id, ticket["seat"].id)
+
+            if pair in ticket_pairs:
+                raise serializers.ValidationError("There's a duplicate seat for the same flight in this request.")
+            else:
+                ticket_pairs.add(pair)
+
+        condition = Q()
+        for flight, seat in ticket_pairs:
+            condition = condition | Q(flight_id=flight, seat_id=seat)
+
+        if Ticket.objects.filter(condition).exists():
+            raise serializers.ValidationError("This ticket has already been taken. Please choose from available tickets.")
+
+        return tickets
+
     def create(self, validated_data):
         with transaction.atomic():
             user = self.context.get("request").user
             tickets_data = validated_data.pop("tickets")
             order = Order.objects.create(user=user, **validated_data)
             for ticket_data in tickets_data:
-                Ticket.objects.create(order=order, **ticket_data)
+                try:
+                    Ticket.objects.create(order=order, **ticket_data)
+                except (ValidationError, IntegrityError):
+                    raise serializers.ValidationError("This ticket has already been taken. Please choose from available tickets.")
             return order
 
 
