@@ -1,13 +1,22 @@
 from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
+
 from airport.models import Ticket
-from airport.serializers import TicketListSerializer, TicketDetailSerializer
-from airport.tests.utils import detail_url, sample_flight, sample_seat, sample_order, sample_user, sample_airplane, \
-    sample_seat_class
+from airport.serializers import TicketDetailSerializer, TicketListSerializer
+from airport.tests.utils import (
+    detail_url,
+    sample_airplane,
+    sample_flight,
+    sample_order,
+    sample_seat,
+    sample_seat_class,
+    sample_user,
+)
 
 TICKET_URL = reverse("airport:ticket-list")
 
@@ -132,13 +141,34 @@ class AuthenticatedTicketApiTests(TestCase):
         airplane = sample_airplane(rows=20)
         flight = sample_flight(airplane=airplane)
 
-        first_class = sample_seat_class(name="First", priority=0, multiplier=Decimal("3.00"))
-        business_class = sample_seat_class(name="Business", priority=1, multiplier=Decimal("2.00"))
-        economy_class = sample_seat_class(name="Economy", priority=2, multiplier=Decimal("1.00"))
+        first_class = sample_seat_class(
+            name="First", priority=0, multiplier=Decimal("3.00")
+        )
+        business_class = sample_seat_class(
+            name="Business", priority=1, multiplier=Decimal("2.00")
+        )
+        economy_class = sample_seat_class(
+            name="Economy", priority=2, multiplier=Decimal("1.00")
+        )
 
-        seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1, seat_class=first_class)
-        seat_2 = sample_seat(airplane=flight.airplane, row=10, seat_number=1, seat_class=business_class)
-        seat_3 = sample_seat(airplane=flight.airplane, row=20, seat_number=1, seat_class=economy_class)
+        seat_1 = sample_seat(
+            airplane=flight.airplane,
+            row=1,
+            seat_number=1,
+            seat_class=first_class
+        )
+        seat_2 = sample_seat(
+            airplane=flight.airplane,
+            row=10,
+            seat_number=1,
+            seat_class=business_class
+        )
+        seat_3 = sample_seat(
+            airplane=flight.airplane,
+            row=20,
+            seat_number=1,
+            seat_class=economy_class
+        )
 
         tickets = [
             {
@@ -156,7 +186,9 @@ class AuthenticatedTicketApiTests(TestCase):
         ]
         sample_order(user=self.user, tickets=tickets)
 
-        res = self.client.get(TICKET_URL, data={"seat_classes": f"{first_class.id}"})
+        res = self.client.get(
+            TICKET_URL, data={"seat_classes": f"{first_class.id}"}
+        )
         ticket_1 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_1.id)
         ticket_2 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_2.id)
         ticket_3 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_3.id)
@@ -174,11 +206,25 @@ class AuthenticatedTicketApiTests(TestCase):
         airplane = sample_airplane(rows=20)
         flight = sample_flight(airplane=airplane)
 
-        first_class = sample_seat_class(name="First", priority=0, multiplier=Decimal("3.00"))
-        economy_class = sample_seat_class(name="Economy", priority=2, multiplier=Decimal("1.00"))
+        first_class = sample_seat_class(
+            name="First", priority=0, multiplier=Decimal("3.00")
+        )
+        economy_class = sample_seat_class(
+            name="Economy", priority=2, multiplier=Decimal("1.00")
+        )
 
-        seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1, seat_class=first_class)
-        seat_2 = sample_seat(airplane=flight.airplane, row=20, seat_number=1, seat_class=economy_class)
+        seat_1 = sample_seat(
+            airplane=flight.airplane,
+            row=1,
+            seat_number=1,
+            seat_class=first_class
+        )
+        seat_2 = sample_seat(
+            airplane=flight.airplane,
+            row=20,
+            seat_number=1,
+            seat_class=economy_class
+        )
 
         tickets = [
             {
@@ -195,7 +241,11 @@ class AuthenticatedTicketApiTests(TestCase):
         ticket_1 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_1.id)
         ticket_2 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_2.id)
 
-        res = self.client.get(TICKET_URL, data={"price_min": f"{(ticket_1.price-Decimal("10.0"))}"})
+        res = self.client.get(
+            TICKET_URL, data={
+                "price_min": f"{(ticket_1.price - Decimal("10.0"))}"
+            }
+        )
 
         serializer_1 = TicketListSerializer(ticket_1)
         serializer_2 = TicketListSerializer(ticket_2)
@@ -209,11 +259,25 @@ class AuthenticatedTicketApiTests(TestCase):
         airplane = sample_airplane(rows=20)
         flight = sample_flight(airplane=airplane)
 
-        first_class = sample_seat_class(name="First", priority=0, multiplier=Decimal("3.00"))
-        economy_class = sample_seat_class(name="Economy", priority=2, multiplier=Decimal("1.00"))
+        first_class = sample_seat_class(
+            name="First", priority=0, multiplier=Decimal("3.00")
+        )
+        economy_class = sample_seat_class(
+            name="Economy", priority=2, multiplier=Decimal("1.00")
+        )
 
-        seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1, seat_class=first_class)
-        seat_2 = sample_seat(airplane=flight.airplane, row=20, seat_number=1, seat_class=economy_class)
+        seat_1 = sample_seat(
+            airplane=flight.airplane,
+            row=1,
+            seat_number=1,
+            seat_class=first_class
+        )
+        seat_2 = sample_seat(
+            airplane=flight.airplane,
+            row=20,
+            seat_number=1,
+            seat_class=economy_class
+        )
 
         tickets = [
             {
@@ -230,7 +294,11 @@ class AuthenticatedTicketApiTests(TestCase):
         ticket_1 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_1.id)
         ticket_2 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_2.id)
 
-        res = self.client.get(TICKET_URL, data={"price_max": f"{(ticket_2.price+Decimal("10.0"))}"})
+        res = self.client.get(
+            TICKET_URL, data={
+                "price_max": f"{(ticket_2.price + Decimal("10.0"))}"
+            }
+        )
 
         serializer_1 = TicketListSerializer(ticket_1)
         serializer_2 = TicketListSerializer(ticket_2)
@@ -244,13 +312,34 @@ class AuthenticatedTicketApiTests(TestCase):
         airplane = sample_airplane(rows=20)
         flight = sample_flight(airplane=airplane)
 
-        first_class = sample_seat_class(name="First", priority=0, multiplier=Decimal("3.00"))
-        business_class = sample_seat_class(name="Business", priority=1, multiplier=Decimal("2.00"))
-        economy_class = sample_seat_class(name="Economy", priority=2, multiplier=Decimal("1.00"))
+        first_class = sample_seat_class(
+            name="First", priority=0, multiplier=Decimal("3.00")
+        )
+        business_class = sample_seat_class(
+            name="Business", priority=1, multiplier=Decimal("2.00")
+        )
+        economy_class = sample_seat_class(
+            name="Economy", priority=2, multiplier=Decimal("1.00")
+        )
 
-        seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1, seat_class=first_class)
-        seat_2 = sample_seat(airplane=flight.airplane, row=10, seat_number=1, seat_class=business_class)
-        seat_3 = sample_seat(airplane=flight.airplane, row=20, seat_number=1, seat_class=economy_class)
+        seat_1 = sample_seat(
+            airplane=flight.airplane,
+            row=1,
+            seat_number=1,
+            seat_class=first_class
+        )
+        seat_2 = sample_seat(
+            airplane=flight.airplane,
+            row=10,
+            seat_number=1,
+            seat_class=business_class
+        )
+        seat_3 = sample_seat(
+            airplane=flight.airplane,
+            row=20,
+            seat_number=1,
+            seat_class=economy_class
+        )
 
         tickets = [
             {
@@ -272,10 +361,13 @@ class AuthenticatedTicketApiTests(TestCase):
         ticket_2 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_2.id)
         ticket_3 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_3.id)
 
-        res = self.client.get(TICKET_URL, data={
-            "price_min": f"{(ticket_3.price + Decimal("10.0"))}",
-            "price_max": f"{(ticket_1.price - Decimal("10.0"))}",
-        })
+        res = self.client.get(
+            TICKET_URL,
+            data={
+                "price_min": f"{(ticket_3.price + Decimal("10.0"))}",
+                "price_max": f"{(ticket_1.price - Decimal("10.0"))}",
+            },
+        )
 
         serializer_1 = TicketListSerializer(ticket_1)
         serializer_2 = TicketListSerializer(ticket_2)
@@ -291,13 +383,33 @@ class AuthenticatedTicketApiTests(TestCase):
         airplane = sample_airplane(rows=20)
         flight = sample_flight(airplane=airplane)
 
-        first_class = sample_seat_class(name="First", priority=0, multiplier=Decimal("3.00"))
-        business_class = sample_seat_class(name="Business", priority=1, multiplier=Decimal("2.00"))
-        economy_class = sample_seat_class(name="Economy", priority=2, multiplier=Decimal("1.00"))
+        first_class = sample_seat_class(
+            name="First", priority=0, multiplier=Decimal("3.00")
+        )
+        business_class = sample_seat_class(
+            name="Business", priority=1, multiplier=Decimal("2.00")
+        )
+        economy_class = sample_seat_class(
+            name="Economy", priority=2, multiplier=Decimal("1.00")
+        )
 
-        seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1, seat_class=first_class)
-        seat_2 = sample_seat(airplane=flight.airplane, row=10, seat_number=1, seat_class=business_class)
-        seat_3 = sample_seat(airplane=flight.airplane, row=20, seat_number=1, seat_class=economy_class)
+        seat_1 = sample_seat(
+            airplane=flight.airplane,
+            row=1, seat_number=1,
+            seat_class=first_class
+        )
+        seat_2 = sample_seat(
+            airplane=flight.airplane,
+            row=10,
+            seat_number=1,
+            seat_class=business_class
+        )
+        seat_3 = sample_seat(
+            airplane=flight.airplane,
+            row=20,
+            seat_number=1,
+            seat_class=economy_class
+        )
 
         tickets = [
             {
@@ -318,10 +430,13 @@ class AuthenticatedTicketApiTests(TestCase):
         ticket_1 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_1.id)
         ticket_3 = Ticket.objects.get(flight_id=flight.id, seat_id=seat_3.id)
 
-        res = self.client.get(TICKET_URL, data={
-            "price_min": f"{(ticket_1.price + Decimal("10.0"))}",
-            "price_max": f"{(ticket_3.price - Decimal("10.0"))}",
-        })
+        res = self.client.get(
+            TICKET_URL,
+            data={
+                "price_min": f"{(ticket_1.price + Decimal("10.0"))}",
+                "price_max": f"{(ticket_3.price - Decimal("10.0"))}",
+            },
+        )
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -453,9 +568,7 @@ class AdminTicketApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 

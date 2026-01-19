@@ -6,25 +6,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('airport', '0002_initial'),
+        ("airport", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='city',
-            options={'verbose_name_plural': 'cities'},
+            name="city",
+            options={"verbose_name_plural": "cities"},
         ),
         migrations.AlterModelOptions(
-            name='country',
-            options={'verbose_name_plural': 'countries'},
+            name="country",
+            options={"verbose_name_plural": "countries"},
         ),
         migrations.AlterModelOptions(
-            name='seatclass',
-            options={'ordering': ['priority'], 'verbose_name_plural': 'seat classes'},
+            name="seatclass",
+            options={
+                "ordering": ["priority"],
+                "verbose_name_plural": "seat classes"
+            },
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='price',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=7),
+            model_name="ticket",
+            name="price",
+            field=models.DecimalField(
+                blank=True,
+                decimal_places=2,
+                max_digits=7
+            ),
         ),
     ]

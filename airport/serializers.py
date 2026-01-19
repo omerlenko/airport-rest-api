@@ -1,14 +1,28 @@
 import re
 import zoneinfo
 from decimal import Decimal
+
 from django.core.exceptions import ValidationError
-from django.db import transaction, IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils.timezone import now
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from airport.models import Country, City, Airport, Route, CrewMember, AirplaneType, Airplane, Flight, SeatClass, Order, \
-    Ticket, Seat
+
+from airport.models import (
+    Airplane,
+    AirplaneType,
+    Airport,
+    City,
+    Country,
+    CrewMember,
+    Flight,
+    Order,
+    Route,
+    Seat,
+    SeatClass,
+    Ticket,
+)
 
 
 class CountrySerializer(serializers.ModelSerializer):
@@ -24,12 +38,17 @@ class CitySerializer(serializers.ModelSerializer):
 
     def validate_timezone(self, value):
         if value.strip() not in zoneinfo.available_timezones():
-            raise serializers.ValidationError("Timezone must be a valid IANA string, e.g. 'America/New_York'.")
+            raise serializers.ValidationError(
+                "Timezone must be a valid IANA string, "
+                "e.g. 'America/New_York'."
+            )
         return value
 
 
 class CityListSerializer(CitySerializer):
-    country = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
+    country = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="name"
+    )
 
 
 class CityDetailSerializer(CitySerializer):
@@ -46,7 +65,9 @@ class AirportSerializer(serializers.ModelSerializer):
     def validate_code(self, value):
         value = value.strip().upper()
         if len(value) != 3 or not value.isalpha():
-            raise serializers.ValidationError("Airport code must be exactly 3 letters. (e.g., 'JFK')")
+            raise serializers.ValidationError(
+                "Airport code must be exactly 3 letters. (e.g., 'JFK')"
+            )
 
         qs = Airport.objects.filter(code__iexact=value)
         if self.instance:
@@ -57,7 +78,9 @@ class AirportSerializer(serializers.ModelSerializer):
 
 
 class AirportListSerializer(AirportSerializer):
-    city = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
+    city = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="name"
+    )
 
 
 class AirportDetailSerializer(AirportSerializer):
@@ -71,17 +94,23 @@ class RouteSerializer(serializers.ModelSerializer):
 
     def validate_distance(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Route distance must be greater than 0.")
+            raise serializers.ValidationError(
+                "Route distance must be greater than 0."
+            )
         return value
 
     def validate(self, attrs):
         source = attrs.get("source", getattr(self.instance, "source", None))
-        destination = attrs.get("destination", getattr(self.instance, "destination", None))
+        destination = attrs.get(
+            "destination", getattr(self.instance, "destination", None)
+        )
         if source is None or destination is None:
             return attrs
 
         if source == destination:
-            raise serializers.ValidationError("Source and destination airports must be different.")
+            raise serializers.ValidationError(
+                "Source and destination airports must be different."
+            )
 
         qs = Route.objects.filter(source=source, destination=destination)
         if self.instance:
@@ -90,9 +119,14 @@ class RouteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Route already exists.")
         return attrs
 
+
 class RouteListSerializer(RouteSerializer):
-    source = serializers.SlugRelatedField(many=False, read_only=True, slug_field="code")
-    destination = serializers.SlugRelatedField(many=False, read_only=True, slug_field="code")
+    source = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="code"
+    )
+    destination = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="code"
+    )
 
 
 class RouteDetailSerializer(RouteSerializer):
@@ -100,7 +134,7 @@ class RouteDetailSerializer(RouteSerializer):
     destination = AirportDetailSerializer(many=False, read_only=True)
 
 
-class CrewMemberSerializer (serializers.ModelSerializer):
+class CrewMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = CrewMember
         fields = ("id", "first_name", "last_name", "full_name")
@@ -112,7 +146,9 @@ class AirplaneTypeSerializer(serializers.ModelSerializer):
         fields = ("id", "manufacturer", "model")
 
     def validate(self, attrs):
-        manufacturer = attrs.get("manufacturer", getattr(self.instance, "manufacturer", None))
+        manufacturer = attrs.get(
+            "manufacturer", getattr(self.instance, "manufacturer", None)
+        )
         model = attrs.get("model", getattr(self.instance, "model", None))
         if not manufacturer and not model:
             return attrs
@@ -124,7 +160,9 @@ class AirplaneTypeSerializer(serializers.ModelSerializer):
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise serializers.ValidationError("This manufacturer and model combo already exists.")
+            raise serializers.ValidationError(
+                "This manufacturer and model combo already exists."
+            )
         return attrs
 
 
@@ -139,13 +177,18 @@ class AirplaneSerializer(serializers.ModelSerializer):
     def validate_tail_number(self, value):
         tail_number = value.strip().upper()
         if not re.match(r"^[A-Z]{1,2}-?[A-Z0-9]{2,5}$", tail_number):
-            raise serializers.ValidationError("Tail number must be a valid registration format, like 'SP-LOT' or 'N12345'.")
+            raise serializers.ValidationError(
+                "Tail number must be a valid registration format, "
+                "like 'SP-LOT' or 'N12345'."
+            )
 
         qs = Airplane.objects.filter(tail_number__iexact=tail_number)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise serializers.ValidationError("This tail number already exists.")
+            raise serializers.ValidationError(
+                "This tail number already exists."
+            )
 
         return tail_number
 
@@ -160,6 +203,7 @@ class AirplaneListSerializer(AirplaneSerializer):
     def get_airplane_type(self, obj):
         return obj.airplane_type.manufacturer + " " + obj.airplane_type.model
 
+
 class AirplaneDetailSerializer(AirplaneSerializer):
     airplane_type = AirplaneTypeSerializer(many=False, read_only=True)
 
@@ -167,7 +211,15 @@ class AirplaneDetailSerializer(AirplaneSerializer):
 class FlightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time")
+        fields = (
+            "id",
+            "route",
+            "airplane",
+            "crew_members",
+            "status",
+            "departure_time",
+            "arrival_time",
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -181,39 +233,63 @@ class FlightSerializer(serializers.ModelSerializer):
                 "destination__city__country",
             )
         if "airplane" in self.fields:
-            self.fields["airplane"].queryset = Airplane.objects.select_related("airplane_type")
+            self.fields["airplane"].queryset = Airplane.objects.select_related(
+                "airplane_type"
+            )
 
     def validate(self, attrs):
-        airplane = attrs.get("airplane", getattr(self.instance, "airplane", None))
+        airplane = attrs.get(
+            "airplane", getattr(self.instance, "airplane", None)
+        )
         crew_members = attrs.get("crew_members", None)
         if crew_members is None and self.instance:
             crew_members = self.instance.crew_members.all()
-        departure_time = attrs.get("departure_time", getattr(self.instance, "departure_time", None))
-        arrival_time = attrs.get("arrival_time", getattr(self.instance, "arrival_time", None))
+        departure_time = attrs.get(
+            "departure_time", getattr(self.instance, "departure_time", None)
+        )
+        arrival_time = attrs.get(
+            "arrival_time", getattr(self.instance, "arrival_time", None)
+        )
 
         if departure_time and arrival_time:
             if arrival_time <= departure_time:
-                raise serializers.ValidationError("Arrival time cannot be sooner than departure time.")
+                raise serializers.ValidationError(
+                    "Arrival time cannot be sooner than departure time."
+                )
         else:
             return attrs
 
         if airplane:
             airplane_flights = airplane.flights.all()
             if self.instance:
-                airplane_flights = airplane_flights.exclude(pk=self.instance.pk)
-            airplane_flights = airplane_flights.filter(arrival_time__gte=departure_time, departure_time__lte=arrival_time)
+                airplane_flights = airplane_flights.exclude(
+                    pk=self.instance.pk
+                )
+            airplane_flights = airplane_flights.filter(
+                arrival_time__gte=departure_time,
+                departure_time__lte=arrival_time
+            )
             if airplane_flights.exists():
-                raise serializers.ValidationError(f"Airplane {airplane} has another flight during this time.")
+                raise serializers.ValidationError(
+                    f"Airplane {airplane} has another flight during this time."
+                )
 
         if crew_members:
             for crew_member in crew_members:
                 crew_member_flights = crew_member.flights.all()
                 if self.instance:
-                    crew_member_flights = crew_member_flights.exclude(pk=self.instance.pk)
-                crew_member_flights = crew_member_flights.filter(arrival_time__gte=departure_time, departure_time__lte=arrival_time)
+                    crew_member_flights = crew_member_flights.exclude(
+                        pk=self.instance.pk
+                    )
+                crew_member_flights = crew_member_flights.filter(
+                    arrival_time__gte=departure_time,
+                    departure_time__lte=arrival_time
+                )
                 if crew_member_flights.exists():
                     raise serializers.ValidationError(
-                        f"Crew member {crew_member.full_name} has another flight during this time.")
+                        f"Crew member {crew_member.full_name} "
+                        f"has another flight during this time."
+                    )
 
         return attrs
 
@@ -221,14 +297,26 @@ class FlightSerializer(serializers.ModelSerializer):
 class FlightListSerializer(FlightSerializer):
     route = RouteListSerializer(many=False, read_only=True)
     airplane = AirplaneListSerializer(many=False, read_only=True)
-    crew_members = serializers.SlugRelatedField(many=True, read_only=True, slug_field="full_name")
+    crew_members = serializers.SlugRelatedField(
+        many=True, read_only=True, slug_field="full_name"
+    )
     status = serializers.CharField(source="get_status_display", read_only=True)
     capacity = serializers.IntegerField(read_only=True)
     tickets_available = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time", "capacity", "tickets_available")
+        fields = (
+            "id",
+            "route",
+            "airplane",
+            "crew_members",
+            "status",
+            "departure_time",
+            "arrival_time",
+            "capacity",
+            "tickets_available",
+        )
 
 
 class FlightDetailSerializer(FlightListSerializer):
@@ -239,28 +327,45 @@ class FlightDetailSerializer(FlightListSerializer):
 
     class Meta:
         model = Flight
-        fields = ("id", "route", "airplane", "crew_members", "status", "departure_time", "arrival_time","capacity", "tickets_available", "taken_seats")
+        fields = (
+            "id",
+            "route",
+            "airplane",
+            "crew_members",
+            "status",
+            "departure_time",
+            "arrival_time",
+            "capacity",
+            "tickets_available",
+            "taken_seats",
+        )
 
     @staticmethod
     def get_taken_seats(obj) -> list[dict]:
         return [
-            {
-                "row": ticket.seat.row,
-                "seat": ticket.seat.seat_number
-            }
+            {"row": ticket.seat.row, "seat": ticket.seat.seat_number}
             for ticket in obj.tickets.all()
         ]
 
 
 class FlightMiniSerializer(FlightSerializer):
-    source = serializers.SlugRelatedField(many=False, read_only=True, source="route", slug_field="source.code")
-    destination = serializers.SlugRelatedField(many=False, read_only=True, source="route", slug_field="destination.code")
+    source = serializers.SlugRelatedField(
+        many=False, read_only=True, source="route", slug_field="source.code"
+    )
+    destination = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        source="route",
+        slug_field="destination.code"
+    )
     departure_time = serializers.DateTimeField()
     arrival_time = serializers.DateTimeField()
 
     class Meta:
         model = Flight
-        fields = ("id", "source", "destination", "departure_time", "arrival_time")
+        fields = (
+            "id", "source", "destination", "departure_time", "arrival_time"
+        )
 
 
 class FlightMiniDetailSerializer(FlightMiniSerializer):
@@ -269,7 +374,16 @@ class FlightMiniDetailSerializer(FlightMiniSerializer):
 
     class Meta:
         model = Flight
-        fields = ("id", "source", "destination", "airplane", "distance_km", "status", "departure_time", "arrival_time")
+        fields = (
+            "id",
+            "source",
+            "destination",
+            "airplane",
+            "distance_km",
+            "status",
+            "departure_time",
+            "arrival_time",
+        )
 
     def get_distance_km(self, obj) -> int:
         return obj.route.distance
@@ -281,16 +395,24 @@ class SeatClassSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "priority", "multiplier")
 
     def validate(self, attrs):
-        priority = attrs.get("priority", getattr(self.instance, "priority", None))
-        multiplier = attrs.get("multiplier", getattr(self.instance, "multiplier", None))
+        priority = attrs.get(
+            "priority", getattr(self.instance, "priority", None)
+        )
+        multiplier = attrs.get(
+            "multiplier", getattr(self.instance, "multiplier", None)
+        )
 
         if not priority and not multiplier:
             return attrs
 
         if priority < 0:
-            raise serializers.ValidationError("Priority can not be a negative integer.")
+            raise serializers.ValidationError(
+                "Priority can not be a negative integer."
+            )
         if multiplier < Decimal("1.00"):
-            raise serializers.ValidationError("The seat price multiplier can not be less than 1.00.")
+            raise serializers.ValidationError(
+                "The seat price multiplier can not be less than 1.00."
+            )
 
         return attrs
 
@@ -307,28 +429,40 @@ class SeatSerializer(serializers.ModelSerializer):
         fields = ("id", "airplane", "row", "seat_number", "seat_class")
 
     def validate(self, attrs):
-        airplane = attrs.get("airplane", getattr(self.instance, "airplane", None))
+        airplane = attrs.get(
+            "airplane", getattr(self.instance, "airplane", None)
+        )
         row = attrs.get("row", getattr(self.instance, "row", None))
-        seat_number = attrs.get("seat_number", getattr(self.instance, "seat_number", None))
+        seat_number = attrs.get(
+            "seat_number", getattr(self.instance, "seat_number", None)
+        )
 
         if airplane is None or row is None or seat_number is None:
             return attrs
 
         if row <= 0 or row > airplane.rows:
-            raise ValidationError(f"The row for this seat must be in range 1-{airplane.rows} ")
+            raise ValidationError(
+                f"The row for this seat must be in range 1-{airplane.rows} "
+            )
         if seat_number <= 0 or seat_number > airplane.seats_in_row:
-            raise ValidationError(f"The seat number for this seat must be in range 1-{airplane.seats_in_row} ")
+            raise ValidationError(
+                f"The seat number for this seat "
+                f"must be in range 1-{airplane.seats_in_row}"
+            )
 
         return attrs
 
 
 class SeatListSerializer(SeatSerializer):
     airplane = AirplaneListSerializer(many=False, read_only=True)
-    seat_class = serializers.SlugRelatedField(many=False, read_only=True, slug_field="name")
+    seat_class = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="name"
+    )
 
 
 class SeatDetailSerializer(SeatListSerializer):
     seat_class = SeatClassMiniSerializer(many=False, read_only=True)
+
 
 class SeatMiniSerializer(SeatListSerializer):
     class Meta:
@@ -338,7 +472,9 @@ class SeatMiniSerializer(SeatListSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     order = serializers.PrimaryKeyRelatedField(read_only=True)
-    price = serializers.DecimalField(max_digits=7, decimal_places=2, read_only=True)
+    price = serializers.DecimalField(
+        max_digits=7, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Ticket
@@ -347,7 +483,8 @@ class TicketSerializer(serializers.ModelSerializer):
             UniqueTogetherValidator(
                 queryset=Ticket.objects.all(),
                 fields=["seat", "flight"],
-                message="This ticket has already been taken. Please choose from available tickets."
+                message="This ticket has already been taken. "
+                        "Please choose from available tickets.",
             )
         ]
 
@@ -357,13 +494,20 @@ class TicketSerializer(serializers.ModelSerializer):
 
         if flight and seat:
             if flight.airplane != seat.airplane:
-                raise serializers.ValidationError("Seat must be appropriate for this flight.")
+                raise serializers.ValidationError(
+                    "Seat must be appropriate for this flight."
+                )
 
             if flight.status != Flight.Status.SCHEDULED:
-                raise serializers.ValidationError(f"You cannot book this flight because its status is [{flight.get_status_display()}]")
+                raise serializers.ValidationError(
+                    f"You cannot book this flight because "
+                    f"its status is [{flight.get_status_display()}]"
+                )
 
             if flight.departure_time <= now():
-                raise serializers.ValidationError("You can only book future flights.")
+                raise serializers.ValidationError(
+                    "You can only book future flights."
+                )
 
         return attrs
 
@@ -392,7 +536,10 @@ class OrderSerializer(serializers.ModelSerializer):
             pair = (ticket["flight"].id, ticket["seat"].id)
 
             if pair in ticket_pairs:
-                raise serializers.ValidationError("There's a duplicate seat for the same flight in this request.")
+                raise serializers.ValidationError(
+                    "There's a duplicate seat "
+                    "for the same flight in this request."
+                )
             else:
                 ticket_pairs.add(pair)
 
@@ -401,7 +548,10 @@ class OrderSerializer(serializers.ModelSerializer):
             condition = condition | Q(flight_id=flight, seat_id=seat)
 
         if Ticket.objects.filter(condition).exists():
-            raise serializers.ValidationError("This ticket has already been taken. Please choose from available tickets.")
+            raise serializers.ValidationError(
+                "This ticket has already been taken. "
+                "Please choose from available tickets."
+            )
 
         return tickets
 
@@ -414,13 +564,20 @@ class OrderSerializer(serializers.ModelSerializer):
                 try:
                     Ticket.objects.create(order=order, **ticket_data)
                 except (ValidationError, IntegrityError):
-                    raise serializers.ValidationError("This ticket has already been taken. Please choose from available tickets.")
+                    raise serializers.ValidationError(
+                        "This ticket has already been taken. "
+                        "Please choose from available tickets."
+                    )
             return order
 
 
 class OrderListSerializer(OrderSerializer):
-    user = serializers.SlugRelatedField(many=False, read_only=True, slug_field="email")
-    total_price = serializers.DecimalField(read_only=True, max_digits=7, decimal_places=2, default=0)
+    user = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="email"
+    )
+    total_price = serializers.DecimalField(
+        read_only=True, max_digits=7, decimal_places=2, default=0
+    )
 
     class Meta:
         model = Order

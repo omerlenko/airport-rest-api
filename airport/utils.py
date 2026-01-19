@@ -10,7 +10,8 @@ def params_to_ints(query_params, name):
     """
     Parse integer query parameters into a list of ints.
 
-    Accepts both repeated (?ids=1&ids=2) and comma-separated (?ids=1,2,3) formats.
+    Accepts both repeated (?ids=1&ids=2)
+    and comma-separated (?ids=1,2,3) formats.
 
     Raises:
         ValidationError: if any value cannot be converted to int.
@@ -20,21 +21,24 @@ def params_to_ints(query_params, name):
         return []
 
     pieces = [
-        str_id.strip()
-        for item in raw
-        for str_id in item.split(",")
-        if str_id.strip()
+        str_id.strip() for item in raw for str_id
+        in item.split(",") if str_id.strip()
     ]
 
     ints = []
-    for p in pieces:
-        if not p.isdigit():
-            raise ValidationError({name: [f"'{p}' is not a valid integer"]})
-        ints.append(int(p))
+    for piece in pieces:
+        if not piece.isdigit():
+            raise ValidationError(
+                {name: [f"'{piece}' is not a valid integer"]}
+            )
+        ints.append(int(piece))
 
     return ints
 
-def params_to_str(query_params, name, max_length=0, alpha=True, upper=False, choices=None):
+
+def params_to_str(
+    query_params, name, max_length=0, alpha=True, upper=False, choices=None
+):
     """
     Parse and validate string-based query parameters.
 
@@ -54,32 +58,39 @@ def params_to_str(query_params, name, max_length=0, alpha=True, upper=False, cho
         return []
 
     pieces = [
-        value.strip()
-        for item in raw
-        for value in item.split(",")
-        if value.strip()
+        value.strip() for item in raw for value
+        in item.split(",") if value.strip()
     ]
 
     values = []
-    for p in pieces:
+    for piece in pieces:
         if alpha:
-            if not p.isalpha():
-                raise ValidationError({name: [f"'{p}' must contain only alphabetic characters"]})
+            if not piece.isalpha():
+                raise ValidationError(
+                    {name: [
+                        f"'{piece}' must contain only alphabetic characters"
+                    ]}
+                )
 
         if max_length > 0:
-            if not len(p) == max_length:
-                raise ValidationError({name: [f"'{p}' is not exactly {max_length} letters"]})
+            if not len(piece) == max_length:
+                raise ValidationError(
+                    {name: [f"'{piece}' is not exactly {max_length} letters"]}
+                )
 
         if choices:
-            if p.lower() not in [c.lower() for c in choices]:
-                raise ValidationError({name: [f"'{p}' is not a valid value for {name}"]})
+            if piece.lower() not in [c.lower() for c in choices]:
+                raise ValidationError(
+                    {name: [f"'{piece}' is not a valid value for {name}"]}
+                )
 
         if upper:
-            values.append(p.upper())
+            values.append(piece.upper())
         else:
-            values.append(p)
+            values.append(piece)
 
     return values
+
 
 def params_to_datetime(query_params, name):
     """
@@ -100,11 +111,14 @@ def params_to_datetime(query_params, name):
     try:
         date_time = datetime.datetime.strptime(query_str, date_format)
     except ValueError:
-        raise ValidationError({name: [f"invalid date format, please use {date_format}"]})
+        raise ValidationError(
+            {name: [f"invalid date format, please use {date_format}"]}
+        )
 
     date_time = timezone.make_aware(date_time, datetime.timezone.utc)
 
     return date_time
+
 
 def parse_date_range(date_str, name, time_zone=None):
     """
@@ -131,24 +145,31 @@ def parse_date_range(date_str, name, time_zone=None):
     try:
         date_time = datetime.datetime.strptime(date_str, date_format)
     except ValueError:
-        raise ValidationError({name: [f"invalid date format, please use {date_format}"]})
+        raise ValidationError(
+            {name: [f"invalid date format, please use {date_format}"]}
+        )
 
     if timezone.is_naive(date_time):
         if time_zone is not None:
             try:
                 time_zone = ZoneInfo(time_zone)
             except ZoneInfoNotFoundError:
-                raise ValidationError({"time_zone": [f"timezone must be a valid IANA string, e.g. 'America/New_York'."]})
+                raise ValidationError(
+                    {
+                        "time_zone": [
+                            "timezone must be a valid IANA string, "
+                            "e.g. 'America/New_York'."
+                        ]
+                    }
+                )
             date_time = timezone.make_aware(date_time, time_zone)
         else:
             date_time = timezone.make_aware(date_time, datetime.timezone.utc)
 
-    date_time = (
-        date_time,
-        date_time + datetime.timedelta(days=1)
-    )
+    date_time = (date_time, date_time + datetime.timedelta(days=1))
 
     return date_time
+
 
 def params_to_decimal(query_params, name):
     """

@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
+
 from airport.models import AirplaneType
 from airport.serializers import AirplaneTypeSerializer
 from airport.tests.utils import detail_url, sample_airplane_type
@@ -21,10 +21,7 @@ class UnauthenticatedAirplaneTypeApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_read_only_if_unauthorized(self):
-        payload = {
-            "manufacturer": "Test_Manufacturer",
-            "model": "Test_Model"
-        }
+        payload = {"manufacturer": "Test_Manufacturer", "model": "Test_Model"}
         res = self.client.post(AIRPLANE_TYPE_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -58,10 +55,7 @@ class AuthenticatedAirplaneTypeApiTests(TestCase):
         self.assertEqual(res.data, serializer.data)
 
     def test_create_forbidden_if_not_staff(self):
-        payload = {
-            "manufacturer": "Test_Manufacturer",
-            "model": "Test_Model"
-        }
+        payload = {"manufacturer": "Test_Manufacturer", "model": "Test_Model"}
         res = self.client.post(AIRPLANE_TYPE_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -86,17 +80,12 @@ class AdminAirplaneTypeApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 
     def test_create_allowed_if_staff(self):
-        payload = {
-            "manufacturer": "Test_Manufacturer",
-            "model": "Test_Model"
-        }
+        payload = {"manufacturer": "Test_Manufacturer", "model": "Test_Model"}
         res = self.client.post(AIRPLANE_TYPE_URL, payload)
         airplane_type = AirplaneType.objects.get(id=res.data["id"])
         serializer = AirplaneTypeSerializer(airplane_type)
@@ -121,10 +110,7 @@ class AdminAirplaneTypeApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_create_with_bad_input_manufacturer(self):
-        payload = {
-            "manufacturer": "",
-            "model": "Test_Model"
-        }
+        payload = {"manufacturer": "", "model": "Test_Model"}
 
         res = self.client.post(AIRPLANE_TYPE_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

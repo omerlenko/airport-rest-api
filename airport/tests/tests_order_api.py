@@ -1,15 +1,22 @@
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
-from airport.models import Order, Ticket, Flight
-from airport.serializers import OrderListSerializer, OrderDetailSerializer
-from airport.tests.utils import detail_url, sample_flight, sample_order, sample_seat, sample_user, sample_airplane
+
+from airport.models import Flight, Order, Ticket
+from airport.serializers import OrderDetailSerializer, OrderListSerializer
+from airport.tests.utils import (
+    detail_url,
+    sample_airplane,
+    sample_flight,
+    sample_order,
+    sample_seat,
+    sample_user,
+)
 
 ORDER_URL = reverse("airport:order-list")
 
@@ -35,7 +42,9 @@ class AuthenticatedOrderApiTests(TestCase):
         sample_order(user=self.user)
         res = self.client.get(ORDER_URL)
 
-        orders = Order.objects.filter(user=self.user).annotate(total_price=Sum("tickets__price"))
+        orders = Order.objects.filter(user=self.user).annotate(
+            total_price=Sum("tickets__price")
+        )
         serializer = OrderListSerializer(orders, many=True)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -50,24 +59,16 @@ class AuthenticatedOrderApiTests(TestCase):
         seat_1 = sample_seat(airplane=airplane, row=1, seat_number=1)
         seat_2 = sample_seat(airplane=airplane, row=1, seat_number=2)
 
-        tickets_1 = [
-            {
-                "flight": flight,
-                "seat": seat_1
-            }
-        ]
-        tickets_2 = [
-            {
-                "flight": flight,
-                "seat": seat_2
-            }
-        ]
+        tickets_1 = [{"flight": flight, "seat": seat_1}]
+        tickets_2 = [{"flight": flight, "seat": seat_2}]
 
         sample_order(user=user_1, tickets=tickets_1)
         sample_order(user=user_2, tickets=tickets_2)
         res = self.client.get(ORDER_URL)
 
-        orders_1 = Order.objects.filter(user=self.user).annotate(total_price=Sum("tickets__price"))
+        orders_1 = Order.objects.filter(user=self.user).annotate(
+            total_price=Sum("tickets__price")
+        )
         serializer_order_1 = OrderListSerializer(orders_1, many=True)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -78,7 +79,11 @@ class AuthenticatedOrderApiTests(TestCase):
         order = sample_order(user=self.user)
         url = detail_url("order", order.id)
 
-        order = Order.objects.filter(user=self.user).annotate(total_price=Sum("tickets__price")).get(id=order.id)
+        order = (
+            Order.objects.filter(user=self.user)
+            .annotate(total_price=Sum("tickets__price"))
+            .get(id=order.id)
+        )
         serializer = OrderDetailSerializer(order)
 
         res = self.client.get(url)
@@ -115,7 +120,9 @@ class AuthenticatedOrderApiTests(TestCase):
         }
 
         res = self.client.post(ORDER_URL, payload, format="json")
-        order = Order.objects.annotate(total_price=Sum("tickets__price")).get(id=res.data["id"])
+        order = Order.objects.annotate(total_price=Sum("tickets__price")).get(
+            id=res.data["id"]
+        )
         serializer = OrderDetailSerializer(order)
 
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
@@ -189,9 +196,7 @@ class AuthenticatedOrderApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cant_create_order_with_empty_tickets(self):
-        payload = {
-            "tickets": []
-        }
+        payload = {"tickets": []}
 
         res = self.client.post(ORDER_URL, payload, format="json")
 
@@ -200,7 +205,9 @@ class AuthenticatedOrderApiTests(TestCase):
     def test_cant_create_order_with_past_flight(self):
         departure_time = datetime(2000, 1, 1, 10, 0, tzinfo=UTC)
         arrival_time = departure_time + timedelta(hours=1)
-        flight = sample_flight(departure_time=departure_time, arrival_time=arrival_time)
+        flight = sample_flight(
+            departure_time=departure_time, arrival_time=arrival_time
+        )
         seat_1 = sample_seat(airplane=flight.airplane, row=1, seat_number=1)
 
         payload = {
@@ -236,7 +243,9 @@ class AuthenticatedOrderApiTests(TestCase):
         airplane = flight.airplane
         wrong_airplane = sample_airplane(tail_number="N11111")
         seat_correct = sample_seat(airplane=airplane, row=1, seat_number=1)
-        seat_invalid = sample_seat(airplane=wrong_airplane, row=1, seat_number=2)
+        seat_invalid = sample_seat(
+            airplane=wrong_airplane, row=1, seat_number=2
+        )
 
         payload = {
             "tickets": [

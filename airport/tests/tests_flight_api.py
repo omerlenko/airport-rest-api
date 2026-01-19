@@ -1,18 +1,33 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import F, Count
+from django.db.models import Count, F
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
-from airport.models import Flight, Seat, Ticket
-from airport.serializers import FlightSerializer, FlightListSerializer, FlightDetailSerializer, SeatListSerializer
-from airport.tests.utils import sample_airport, sample_country, sample_city, sample_route, detail_url, sample_airplane, \
-    sample_crew_member, sample_flight, sample_airplane_type, sample_seat, sample_order
 
+from airport.models import Flight, Seat, Ticket
+from airport.serializers import (
+    FlightDetailSerializer,
+    FlightListSerializer,
+    FlightSerializer,
+    SeatListSerializer,
+)
+from airport.tests.utils import (
+    detail_url,
+    sample_airplane,
+    sample_airplane_type,
+    sample_airport,
+    sample_city,
+    sample_country,
+    sample_crew_member,
+    sample_flight,
+    sample_order,
+    sample_route,
+    sample_seat,
+)
 
 FLIGHT_URL = reverse("airport:flight-list")
 
@@ -56,8 +71,10 @@ class AuthenticatedFlightApiTests(TestCase):
         res = self.client.get(FLIGHT_URL)
 
         flights = Flight.objects.annotate(
-                capacity=F("airplane__rows") * F("airplane__seats_in_row")
-            ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+            capacity=F("airplane__rows") * F("airplane__seats_in_row")
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
         serializer = FlightListSerializer(flights, many=True)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -70,17 +87,32 @@ class AuthenticatedFlightApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
         route_3 = sample_route(source=airport_3, destination=airport_1)
 
-        airplane_1 = sample_airplane(tail_number="N11111", airplane_type=sample_airplane_type(manufacturer="Test_1"))
-        airplane_2 = sample_airplane(tail_number="N22222", airplane_type=sample_airplane_type(manufacturer="Test_2"))
-        airplane_3 = sample_airplane(tail_number="N33333", airplane_type=sample_airplane_type(manufacturer="Test_3"))
+        airplane_1 = sample_airplane(
+            tail_number="N11111",
+            airplane_type=sample_airplane_type(manufacturer="Test_1"),
+        )
+        airplane_2 = sample_airplane(
+            tail_number="N22222",
+            airplane_type=sample_airplane_type(manufacturer="Test_2"),
+        )
+        airplane_3 = sample_airplane(
+            tail_number="N33333",
+            airplane_type=sample_airplane_type(manufacturer="Test_3"),
+        )
 
         flight_1 = sample_flight(route=route_1, airplane=airplane_1)
         flight_2 = sample_flight(route=route_2, airplane=airplane_2)
@@ -88,7 +120,9 @@ class AuthenticatedFlightApiTests(TestCase):
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
 
         serializer_flight_1 = FlightListSerializer(flights.get(id=flight_1.id))
         serializer_flight_2 = FlightListSerializer(flights.get(id=flight_2.id))
@@ -109,17 +143,32 @@ class AuthenticatedFlightApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
         route_3 = sample_route(source=airport_3, destination=airport_1)
 
-        airplane_1 = sample_airplane(tail_number="N11111", airplane_type=sample_airplane_type(manufacturer="Test_1"))
-        airplane_2 = sample_airplane(tail_number="N22222", airplane_type=sample_airplane_type(manufacturer="Test_2"))
-        airplane_3 = sample_airplane(tail_number="N33333", airplane_type=sample_airplane_type(manufacturer="Test_3"))
+        airplane_1 = sample_airplane(
+            tail_number="N11111",
+            airplane_type=sample_airplane_type(manufacturer="Test_1"),
+        )
+        airplane_2 = sample_airplane(
+            tail_number="N22222",
+            airplane_type=sample_airplane_type(manufacturer="Test_2"),
+        )
+        airplane_3 = sample_airplane(
+            tail_number="N33333",
+            airplane_type=sample_airplane_type(manufacturer="Test_3"),
+        )
 
         flight_1 = sample_flight(route=route_1, airplane=airplane_1)
         flight_2 = sample_flight(route=route_2, airplane=airplane_2)
@@ -127,7 +176,9 @@ class AuthenticatedFlightApiTests(TestCase):
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
 
         serializer_flight_1 = FlightListSerializer(flights.get(id=flight_1.id))
         serializer_flight_2 = FlightListSerializer(flights.get(id=flight_2.id))
@@ -148,31 +199,56 @@ class AuthenticatedFlightApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
         route_3 = sample_route(source=airport_3, destination=airport_1)
 
-        airplane_1 = sample_airplane(tail_number="N11111", airplane_type=sample_airplane_type(manufacturer="Test_1"))
-        airplane_2 = sample_airplane(tail_number="N22222", airplane_type=sample_airplane_type(manufacturer="Test_2"))
-        airplane_3 = sample_airplane(tail_number="N33333", airplane_type=sample_airplane_type(manufacturer="Test_3"))
+        airplane_1 = sample_airplane(
+            tail_number="N11111",
+            airplane_type=sample_airplane_type(manufacturer="Test_1"),
+        )
+        airplane_2 = sample_airplane(
+            tail_number="N22222",
+            airplane_type=sample_airplane_type(manufacturer="Test_2"),
+        )
+        airplane_3 = sample_airplane(
+            tail_number="N33333",
+            airplane_type=sample_airplane_type(manufacturer="Test_3"),
+        )
 
-        flight_1 = sample_flight(route=route_1, airplane=airplane_1, status=Flight.Status.SCHEDULED)
-        flight_2 = sample_flight(route=route_2, airplane=airplane_2, status=Flight.Status.DELAYED)
-        flight_3 = sample_flight(route=route_3, airplane=airplane_3, status=Flight.Status.BOARDING)
+        flight_1 = sample_flight(
+            route=route_1, airplane=airplane_1, status=Flight.Status.SCHEDULED
+        )
+        flight_2 = sample_flight(
+            route=route_2, airplane=airplane_2, status=Flight.Status.DELAYED
+        )
+        flight_3 = sample_flight(
+            route=route_3, airplane=airplane_3, status=Flight.Status.BOARDING
+        )
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
 
         serializer_flight_1 = FlightListSerializer(flights.get(id=flight_1.id))
         serializer_flight_2 = FlightListSerializer(flights.get(id=flight_2.id))
         serializer_flight_3 = FlightListSerializer(flights.get(id=flight_3.id))
 
-        res = self.client.get(FLIGHT_URL, data={"status": "scheduled, delayed"})
+        res = self.client.get(
+            FLIGHT_URL, data={"status": "scheduled, delayed"}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -187,33 +263,68 @@ class AuthenticatedFlightApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
         route_3 = sample_route(source=airport_3, destination=airport_1)
 
-        airplane_1 = sample_airplane(tail_number="N11111", airplane_type=sample_airplane_type(manufacturer="Test_1"))
-        airplane_2 = sample_airplane(tail_number="N22222", airplane_type=sample_airplane_type(manufacturer="Test_2"))
-        airplane_3 = sample_airplane(tail_number="N33333", airplane_type=sample_airplane_type(manufacturer="Test_3"))
+        airplane_1 = sample_airplane(
+            tail_number="N11111",
+            airplane_type=sample_airplane_type(manufacturer="Test_1"),
+        )
+        airplane_2 = sample_airplane(
+            tail_number="N22222",
+            airplane_type=sample_airplane_type(manufacturer="Test_2"),
+        )
+        airplane_3 = sample_airplane(
+            tail_number="N33333",
+            airplane_type=sample_airplane_type(manufacturer="Test_3"),
+        )
 
         now = timezone.now()
 
-        flight_1 = sample_flight(route=route_1, airplane=airplane_1, departure_time=now+timedelta(hours=3))
-        flight_2 = sample_flight(route=route_2, airplane=airplane_2, departure_time=now+timedelta(hours=2))
-        flight_3 = sample_flight(route=route_3, airplane=airplane_3, departure_time=now+timedelta(hours=1))
+        flight_1 = sample_flight(
+            route=route_1,
+            airplane=airplane_1,
+            departure_time=now + timedelta(hours=3)
+        )
+        flight_2 = sample_flight(
+            route=route_2,
+            airplane=airplane_2,
+            departure_time=now + timedelta(hours=2)
+        )
+        flight_3 = sample_flight(
+            route=route_3,
+            airplane=airplane_3,
+            departure_time=now + timedelta(hours=1)
+        )
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
 
         serializer_flight_1 = FlightListSerializer(flights.get(id=flight_1.id))
         serializer_flight_2 = FlightListSerializer(flights.get(id=flight_2.id))
         serializer_flight_3 = FlightListSerializer(flights.get(id=flight_3.id))
 
-        res = self.client.get(FLIGHT_URL, data={"departure_time": f"{(now + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M")}"})
+        res = self.client.get(
+            FLIGHT_URL,
+            data={
+                "departure_time":
+                    f"{(now + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M")}"
+            },
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -228,17 +339,32 @@ class AuthenticatedFlightApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
         route_3 = sample_route(source=airport_3, destination=airport_1)
 
-        airplane_1 = sample_airplane(tail_number="N11111", airplane_type=sample_airplane_type(manufacturer="Test_1"))
-        airplane_2 = sample_airplane(tail_number="N22222", airplane_type=sample_airplane_type(manufacturer="Test_2"))
-        airplane_3 = sample_airplane(tail_number="N33333", airplane_type=sample_airplane_type(manufacturer="Test_3"))
+        airplane_1 = sample_airplane(
+            tail_number="N11111",
+            airplane_type=sample_airplane_type(manufacturer="Test_1"),
+        )
+        airplane_2 = sample_airplane(
+            tail_number="N22222",
+            airplane_type=sample_airplane_type(manufacturer="Test_2"),
+        )
+        airplane_3 = sample_airplane(
+            tail_number="N33333",
+            airplane_type=sample_airplane_type(manufacturer="Test_3"),
+        )
 
         now = timezone.now()
 
@@ -263,13 +389,21 @@ class AuthenticatedFlightApiTests(TestCase):
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
 
         serializer_flight_1 = FlightListSerializer(flights.get(id=flight_1.id))
         serializer_flight_2 = FlightListSerializer(flights.get(id=flight_2.id))
         serializer_flight_3 = FlightListSerializer(flights.get(id=flight_3.id))
 
-        res = self.client.get(FLIGHT_URL, data={"departure_date": f"{(now + timedelta(days=1)).strftime("%Y-%m-%d")}"})
+        res = self.client.get(
+            FLIGHT_URL,
+            data={
+                "departure_date":
+                    f"{(now + timedelta(days=1)).strftime("%Y-%m-%d")}"
+            },
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 1)
@@ -283,7 +417,9 @@ class AuthenticatedFlightApiTests(TestCase):
 
         flights = Flight.objects.annotate(
             capacity=F("airplane__rows") * F("airplane__seats_in_row")
-        ).annotate(tickets_available=F("capacity") - Count("tickets", distinct=True))
+        ).annotate(tickets_available=F("capacity") - Count(
+            "tickets", distinct=True)
+        )
         serializer = FlightDetailSerializer(flights.get(id=flight.id))
 
         res = self.client.get(url)
@@ -296,7 +432,9 @@ class AuthenticatedFlightApiTests(TestCase):
         url = detail_url("flight", flight.id) + "available_seats/"
 
         all_seats = flight.airplane.seats.all()
-        taken_seats_ids = Ticket.objects.filter(flight=flight).values_list("seat_id", flat=True)
+        taken_seats_ids = Ticket.objects.filter(flight=flight).values_list(
+            "seat_id", flat=True
+        )
         available_seats = all_seats.exclude(id__in=taken_seats_ids)
         serializer = SeatListSerializer(available_seats, many=True)
 
@@ -307,7 +445,9 @@ class AuthenticatedFlightApiTests(TestCase):
 
     def test_retrieve_available_seats_excludes_booked_seats(self):
         flight = sample_flight()
-        booked_seat = sample_seat(airplane=flight.airplane, row=1, seat_number=1)
+        booked_seat = sample_seat(
+            airplane=flight.airplane, row=1, seat_number=1
+        )
 
         tickets = [
             {
@@ -320,11 +460,15 @@ class AuthenticatedFlightApiTests(TestCase):
         url = detail_url("flight", flight.id) + "available_seats/"
 
         all_seats = flight.airplane.seats.all()
-        taken_seats_ids = Ticket.objects.filter(flight=flight).values_list("seat_id", flat=True)
+        taken_seats_ids = Ticket.objects.filter(flight=flight).values_list(
+            "seat_id", flat=True
+        )
         available_seats = all_seats.exclude(id__in=taken_seats_ids)
 
         serializer = SeatListSerializer(available_seats, many=True)
-        booked_seat_serializer = SeatListSerializer(Seat.objects.get(id=booked_seat.id), many=False)
+        booked_seat_serializer = SeatListSerializer(
+            Seat.objects.get(id=booked_seat.id), many=False
+        )
 
         res = self.client.get(url)
 
@@ -381,9 +525,7 @@ class AdminFlightApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 
@@ -436,4 +578,3 @@ class AdminFlightApiTests(TestCase):
         }
         res = self.client.post(FLIGHT_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-

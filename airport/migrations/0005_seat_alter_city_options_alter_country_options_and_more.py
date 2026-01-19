@@ -7,82 +7,106 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('airport', '0004_alter_airplanetype_unique_together_and_more'),
+        ("airport", "0004_alter_airplanetype_unique_together_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Seat',
+            name="Seat",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('row', models.IntegerField()),
-                ('seat_number', models.IntegerField()),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("row", models.IntegerField()),
+                ("seat_number", models.IntegerField()),
             ],
             options={
-                'ordering': ['row', 'seat_number'],
+                "ordering": ["row", "seat_number"],
             },
         ),
         migrations.AlterModelOptions(
-            name='city',
-            options={'ordering': ['name'], 'verbose_name_plural': 'cities'},
+            name="city",
+            options={"ordering": ["name"], "verbose_name_plural": "cities"},
         ),
         migrations.AlterModelOptions(
-            name='country',
-            options={'ordering': ['name'], 'verbose_name_plural': 'countries'},
+            name="country",
+            options={"ordering": ["name"], "verbose_name_plural": "countries"},
         ),
         migrations.AlterModelOptions(
-            name='crewmember',
-            options={'ordering': ['last_name']},
+            name="crewmember",
+            options={"ordering": ["last_name"]},
         ),
         migrations.AlterModelOptions(
-            name='flight',
-            options={'ordering': ['departure_time']},
+            name="flight",
+            options={"ordering": ["departure_time"]},
         ),
         migrations.AlterModelOptions(
-            name='route',
-            options={'ordering': ['distance']},
+            name="route",
+            options={"ordering": ["distance"]},
         ),
         migrations.AlterModelOptions(
-            name='ticket',
-            options={'ordering': ['-order__created_at']},
+            name="ticket",
+            options={"ordering": ["-order__created_at"]},
         ),
         migrations.RemoveConstraint(
-            model_name='ticket',
-            name='unique_ticket',
+            model_name="ticket",
+            name="unique_ticket",
         ),
         migrations.RemoveField(
-            model_name='ticket',
-            name='row',
+            model_name="ticket",
+            name="row",
         ),
         migrations.RemoveField(
-            model_name='ticket',
-            name='seat_class',
+            model_name="ticket",
+            name="seat_class",
         ),
         migrations.AlterUniqueTogether(
-            name='airport',
-            unique_together={('name', 'city')},
+            name="airport",
+            unique_together={("name", "city")},
         ),
         migrations.AddField(
-            model_name='seat',
-            name='airplane',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='seats', to='airport.airplane'),
+            model_name="seat",
+            name="airplane",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="seats",
+                to="airport.airplane",
+            ),
         ),
         migrations.AddField(
-            model_name='seat',
-            name='seat_class',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='seats', to='airport.seatclass'),
+            model_name="seat",
+            name="seat_class",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="seats",
+                to="airport.seatclass",
+            ),
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='seat',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tickets', to='airport.seat'),
+            model_name="ticket",
+            name="seat",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="airport.seat",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='ticket',
-            constraint=models.UniqueConstraint(fields=('flight', 'seat'), name='unique_ticket'),
+            model_name="ticket",
+            constraint=models.UniqueConstraint(
+                fields=("flight", "seat"), name="unique_ticket"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='seat',
-            constraint=models.UniqueConstraint(fields=('airplane', 'row', 'seat_number'), name='unique_seat'),
+            model_name="seat",
+            constraint=models.UniqueConstraint(
+                fields=("airplane", "row", "seat_number"), name="unique_seat"
+            ),
         ),
     ]

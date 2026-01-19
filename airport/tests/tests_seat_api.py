@@ -2,11 +2,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
+
 from airport.models import Seat
-from airport.serializers import SeatListSerializer, SeatDetailSerializer
-from airport.tests.utils import detail_url, sample_seat_class, sample_airplane, sample_seat, sample_airplane_type
+from airport.serializers import SeatDetailSerializer, SeatListSerializer
+from airport.tests.utils import (
+    detail_url,
+    sample_airplane,
+    sample_airplane_type,
+    sample_seat,
+    sample_seat_class,
+)
 
 SEAT_URL = reverse("airport:seat-list")
 
@@ -67,7 +73,9 @@ class AuthenticatedSeatApiTests(TestCase):
         serializer_seat_2 = SeatListSerializer(seat_2)
         serializer_seat_3 = SeatListSerializer(seat_3)
 
-        res = self.client.get(SEAT_URL, data={"airplanes": f"{airplane_1.id}, {airplane_2.id}"})
+        res = self.client.get(
+            SEAT_URL, data={"airplanes": f"{airplane_1.id}, {airplane_2.id}"}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -120,9 +128,7 @@ class AdminSeatApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 

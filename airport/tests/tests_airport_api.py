@@ -2,11 +2,20 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
+
 from airport.models import Airport
-from airport.serializers import AirportListSerializer, AirportDetailSerializer, AirportSerializer
-from airport.tests.utils import sample_city, sample_airport, sample_country, detail_url
+from airport.serializers import (
+    AirportDetailSerializer,
+    AirportListSerializer,
+    AirportSerializer,
+)
+from airport.tests.utils import (
+    detail_url,
+    sample_airport,
+    sample_city,
+    sample_country
+)
 
 AIRPORT_URL = reverse("airport:airport-list")
 
@@ -56,22 +65,29 @@ class AuthenticatedAirportApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         serializer_airport_1 = AirportListSerializer(airport_1)
         serializer_airport_2 = AirportListSerializer(airport_2)
         serializer_airport_3 = AirportListSerializer(airport_3)
 
-        res = self.client.get(AIRPORT_URL, data={"cities": f"{city_1.id}, {city_2.id}"})
+        res = self.client.get(
+            AIRPORT_URL, data={"cities": f"{city_1.id}, {city_2.id}"}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
         self.assertIn(serializer_airport_1.data, res.data["results"])
         self.assertIn(serializer_airport_2.data, res.data["results"])
         self.assertNotIn(serializer_airport_3.data, res.data["results"])
-
 
     def test_retrieve_airport_detail(self):
         airport = sample_airport()
@@ -97,7 +113,7 @@ class AuthenticatedAirportApiTests(TestCase):
         airport = sample_airport()
         url = detail_url("airport", airport.id)
         payload = {
-            "name":  "Updated Test Airport",
+            "name": "Updated Test Airport",
         }
         res = self.client.patch(url, payload)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
@@ -114,9 +130,7 @@ class AdminAirportApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 

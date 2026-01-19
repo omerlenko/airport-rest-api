@@ -8,89 +8,145 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('airport', '0003_alter_city_options_alter_country_options_and_more'),
+        ("airport", "0003_alter_city_options_alter_country_options_and_more"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='airplanetype',
+            name="airplanetype",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='ticket',
+            name="ticket",
             unique_together=set(),
         ),
         migrations.AlterField(
-            model_name='airplane',
-            name='airplane_type',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='airplanes', to='airport.airplanetype'),
+            model_name="airplane",
+            name="airplane_type",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="airplanes",
+                to="airport.airplanetype",
+            ),
         ),
         migrations.AlterField(
-            model_name='airplane',
-            name='rows',
-            field=models.IntegerField(validators=[django.core.validators.MinValueValidator(1, message='Rows must be at least 1.')]),
+            model_name="airplane",
+            name="rows",
+            field=models.IntegerField(
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        1, message="Rows must be at least 1."
+                    )
+                ]
+            ),
         ),
         migrations.AlterField(
-            model_name='airplane',
-            name='seats_in_row',
-            field=models.IntegerField(validators=[django.core.validators.MinValueValidator(1, message='Seats per row must be at least 1.')]),
+            model_name="airplane",
+            name="seats_in_row",
+            field=models.IntegerField(
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        1, message="Seats per row must be at least 1."
+                    )
+                ]
+            ),
         ),
         migrations.AlterField(
-            model_name='airport',
-            name='city',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='airports', to='airport.city'),
+            model_name="airport",
+            name="city",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="airports",
+                to="airport.city",
+            ),
         ),
         migrations.AlterField(
-            model_name='city',
-            name='country',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='cities', to='airport.country'),
+            model_name="city",
+            name="country",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="cities",
+                to="airport.country",
+            ),
         ),
         migrations.AlterField(
-            model_name='flight',
-            name='airplane',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='flights', to='airport.airplane'),
+            model_name="flight",
+            name="airplane",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="flights",
+                to="airport.airplane",
+            ),
         ),
         migrations.AlterField(
-            model_name='flight',
-            name='route',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='flights', to='airport.route'),
+            model_name="flight",
+            name="route",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="flights",
+                to="airport.route",
+            ),
         ),
         migrations.AlterField(
-            model_name='route',
-            name='destination',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='destination_routes', to='airport.airport'),
+            model_name="route",
+            name="destination",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="destination_routes",
+                to="airport.airport",
+            ),
         ),
         migrations.AlterField(
-            model_name='route',
-            name='source',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='source_routes', to='airport.airport'),
+            model_name="route",
+            name="source",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="source_routes",
+                to="airport.airport",
+            ),
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='flight',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tickets', to='airport.flight'),
+            model_name="ticket",
+            name="flight",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="airport.flight",
+            ),
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='order',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tickets', to='airport.order'),
+            model_name="ticket",
+            name="order",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="airport.order",
+            ),
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='price',
+            model_name="ticket",
+            name="price",
             field=models.DecimalField(decimal_places=2, max_digits=7),
         ),
         migrations.AlterField(
-            model_name='ticket',
-            name='seat_class',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tickets', to='airport.seatclass'),
+            model_name="ticket",
+            name="seat_class",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="airport.seatclass",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='airplanetype',
-            constraint=models.UniqueConstraint(fields=('manufacturer', 'model'), name='unique_airplane_type'),
+            model_name="airplanetype",
+            constraint=models.UniqueConstraint(
+                fields=("manufacturer", "model"), name="unique_airplane_type"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='ticket',
-            constraint=models.UniqueConstraint(fields=('flight', 'row', 'seat'), name='unique_ticket'),
+            model_name="ticket",
+            constraint=models.UniqueConstraint(
+                fields=("flight", "row", "seat"), name="unique_ticket"
+            ),
         ),
     ]

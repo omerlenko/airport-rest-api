@@ -2,11 +2,15 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
+
 from airport.models import City
-from airport.serializers import CitySerializer, CityListSerializer, CityDetailSerializer
-from airport.tests.utils import sample_city, sample_country, detail_url
+from airport.serializers import (
+    CityDetailSerializer,
+    CityListSerializer,
+    CitySerializer,
+)
+from airport.tests.utils import detail_url, sample_city, sample_country
 
 CITY_URL = reverse("airport:city-list")
 
@@ -25,7 +29,7 @@ class UnauthenticatedCityApiTests(TestCase):
         payload = {
             "name": "Test City",
             "country": country.id,
-            "timezone": "Europe/Warsaw"
+            "timezone": "Europe/Warsaw",
         }
         res = self.client.post(CITY_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -63,14 +67,15 @@ class AuthenticatedCityApiTests(TestCase):
         serializer_city_2 = CityListSerializer(city_2)
         serializer_city_3 = CityListSerializer(city_3)
 
-        res = self.client.get(CITY_URL, data={"countries": f"{country_1.id}, {country_2.id}"})
+        res = self.client.get(
+            CITY_URL, data={"countries": f"{country_1.id}, {country_2.id}"}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
         self.assertIn(serializer_city_1.data, res.data["results"])
         self.assertIn(serializer_city_2.data, res.data["results"])
         self.assertNotIn(serializer_city_3.data, res.data["results"])
-
 
     def test_retrieve_city_detail(self):
         city = sample_city()
@@ -85,9 +90,9 @@ class AuthenticatedCityApiTests(TestCase):
     def test_create_forbidden_if_not_staff(self):
         country = sample_country()
         payload = {
-            "name":  "Test City",
+            "name": "Test City",
             "country": country.id,
-            "timezone": "Europe/Warsaw"
+            "timezone": "Europe/Warsaw",
         }
         res = self.client.post(CITY_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
@@ -96,7 +101,7 @@ class AuthenticatedCityApiTests(TestCase):
         city = sample_city()
         url = detail_url("city", city.id)
         payload = {
-            "name":  "Updated Test City",
+            "name": "Updated Test City",
         }
         res = self.client.patch(url, payload)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
@@ -113,9 +118,7 @@ class AdminCityApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 
@@ -124,7 +127,7 @@ class AdminCityApiTests(TestCase):
         payload = {
             "name": "Test City",
             "country": country.id,
-            "timezone": "Europe/Warsaw"
+            "timezone": "Europe/Warsaw",
         }
         res = self.client.post(CITY_URL, payload)
         city = City.objects.get(id=res.data["id"])
@@ -137,7 +140,7 @@ class AdminCityApiTests(TestCase):
         city = sample_city()
         url = detail_url("city", city.id)
         payload = {
-            "name":  "Updated Test City",
+            "name": "Updated Test City",
         }
         res = self.client.patch(url, payload)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -153,7 +156,7 @@ class AdminCityApiTests(TestCase):
         payload = {
             "name": "Test City",
             "country": "Bad Country",
-            "timezone": "Europe/Warsaw"
+            "timezone": "Europe/Warsaw",
         }
         res = self.client.post(CITY_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
@@ -163,7 +166,7 @@ class AdminCityApiTests(TestCase):
         payload = {
             "name": "Test City",
             "country": country.id,
-            "timezone": "Bad Timezone"
+            "timezone": "Bad Timezone",
         }
         res = self.client.post(CITY_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

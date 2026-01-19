@@ -1,28 +1,37 @@
-from datetime import timedelta, datetime, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from rest_framework.reverse import reverse
-from airport.models import Country, City, Airport, Route, CrewMember, AirplaneType, Airplane, Flight, SeatClass, Order, \
-    Ticket, Seat
+
+from airport.models import (
+    Airplane,
+    AirplaneType,
+    Airport,
+    City,
+    Country,
+    CrewMember,
+    Flight,
+    Order,
+    Route,
+    Seat,
+    SeatClass,
+    Ticket,
+)
 
 
 def detail_url(prefix, instance_id):
     return reverse(f"airport:{prefix}-detail", args=(instance_id,))
 
+
 def sample_country(**params):
-    defaults = {
-        "name": "Test Country",
-        "iso_code": "TC"
-    }
+    defaults = {"name": "Test Country", "iso_code": "TC"}
     defaults.update(params)
     return Country.objects.get_or_create(**defaults)[0]
 
+
 def sample_city(**params):
-    defaults = {
-        "name": "Test City",
-        "timezone": "Europe/Warsaw"
-    }
+    defaults = {"name": "Test City", "timezone": "Europe/Warsaw"}
 
     defaults.update(params)
     if "country" not in params:
@@ -30,17 +39,16 @@ def sample_city(**params):
 
     return City.objects.get_or_create(**defaults)[0]
 
+
 def sample_airport(**params):
-    defaults = {
-        "name": "Test Airport",
-        "code": "TSA"
-    }
+    defaults = {"name": "Test Airport", "code": "TSA"}
 
     defaults.update(params)
     if "city" not in params:
         defaults.update(city=sample_city())
 
     return Airport.objects.get_or_create(**defaults)[0]
+
 
 def sample_route(**params):
     defaults = {
@@ -52,28 +60,31 @@ def sample_route(**params):
         country = sample_country()
 
         if "source" not in params:
-            defaults.update(source=sample_airport(
-                city=sample_city(name="Test City 1", country=country),
-                code="QQQ",
-            ))
+            defaults.update(
+                source=sample_airport(
+                    city=sample_city(name="Test City 1", country=country),
+                    code="QQQ",
+                )
+            )
 
         if "destination" not in params:
-            defaults.update(destination=sample_airport(
-                city=sample_city(name="Test City 2", country=country),
-                code="WWW",
-            ))
+            defaults.update(
+                destination=sample_airport(
+                    city=sample_city(name="Test City 2", country=country),
+                    code="WWW",
+                )
+            )
 
     return Route.objects.get_or_create(**defaults)[0]
 
+
 def sample_crew_member(**params):
-    defaults = {
-        "first_name": "Test",
-        "last_name": "Crew_Member"
-    }
+    defaults = {"first_name": "Test", "last_name": "Crew_Member"}
 
     defaults.update(params)
 
     return CrewMember.objects.get_or_create(**defaults)[0]
+
 
 def sample_seat_class(**params):
     defaults = {
@@ -92,16 +103,12 @@ def sample_seat_class(**params):
 
     return seat_class
 
+
 def create_basic_three_seat_classes():
-    sample_seat_class(
-        priority=0, name="First", multiplier=Decimal("3.00")
-    )
-    sample_seat_class(
-        priority=1, name="Business", multiplier=Decimal("2.00")
-    )
-    sample_seat_class(
-        priority=2, name="Economy", multiplier=Decimal("1.00")
-    )
+    sample_seat_class(priority=0, name="First", multiplier=Decimal("3.00"))
+    sample_seat_class(priority=1, name="Business", multiplier=Decimal("2.00"))
+    sample_seat_class(priority=2, name="Economy", multiplier=Decimal("1.00"))
+
 
 def sample_seat(**params):
     defaults = {
@@ -117,15 +124,14 @@ def sample_seat(**params):
 
     return Seat.objects.get_or_create(**defaults)[0]
 
+
 def sample_airplane_type(**params):
-    defaults = {
-        "manufacturer": "Test_Manufacturer",
-        "model": "Test_Model"
-    }
+    defaults = {"manufacturer": "Test_Manufacturer", "model": "Test_Model"}
 
     defaults.update(params)
 
     return AirplaneType.objects.get_or_create(**defaults)[0]
+
 
 def sample_airplane(**params):
     create_basic_three_seat_classes()
@@ -141,6 +147,7 @@ def sample_airplane(**params):
         defaults.update(airplane_type=sample_airplane_type())
 
     return Airplane.objects.get_or_create(**defaults)[0]
+
 
 def sample_flight(crew_members=None, **params):
     if crew_members is None:
@@ -167,6 +174,7 @@ def sample_flight(crew_members=None, **params):
 
     return flight
 
+
 def sample_user(**params):
     defaults = {
         "email": "test_user@test.com",
@@ -176,6 +184,7 @@ def sample_user(**params):
     defaults.update(params)
 
     return get_user_model().objects.create_user(**defaults)
+
 
 def sample_order(user=None, tickets=None):
     if user is None:
@@ -191,6 +200,7 @@ def sample_order(user=None, tickets=None):
 
     return order
 
+
 def sample_ticket(order, **params):
     defaults = {}
     defaults.update(params)
@@ -199,6 +209,5 @@ def sample_ticket(order, **params):
         defaults.update(flight=sample_flight())
     if "seat" not in params:
         defaults.update(seat=sample_seat())
-
 
     return Ticket.objects.create(order=order, **defaults)

@@ -2,11 +2,21 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
-
 from rest_framework.test import APIClient
+
 from airport.models import Route
-from airport.serializers import RouteListSerializer, RouteDetailSerializer, RouteSerializer
-from airport.tests.utils import sample_airport, sample_country, sample_city, sample_route, detail_url
+from airport.serializers import (
+    RouteDetailSerializer,
+    RouteListSerializer,
+    RouteSerializer,
+)
+from airport.tests.utils import (
+    detail_url,
+    sample_airport,
+    sample_city,
+    sample_country,
+    sample_route,
+)
 
 ROUTE_URL = reverse("airport:route-list")
 
@@ -23,8 +33,8 @@ class UnauthenticatedRouteApiTests(TestCase):
     def test_read_only_if_unauthorized(self):
         country = sample_country()
 
-        city_1 = sample_city(name= "Test City 1", country=country)
-        city_2 = sample_city(name= "Test City 2", country=country)
+        city_1 = sample_city(name="Test City 1", country=country)
+        city_2 = sample_city(name="Test City 2", country=country)
 
         airport_1 = sample_airport(city=city_1, code="QQQ")
         airport_2 = sample_airport(city=city_2, code="WWW")
@@ -62,9 +72,15 @@ class AuthenticatedRouteApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
@@ -74,7 +90,9 @@ class AuthenticatedRouteApiTests(TestCase):
         serializer_route_2 = RouteListSerializer(route_2)
         serializer_route_3 = RouteListSerializer(route_3)
 
-        res = self.client.get(ROUTE_URL, data={"sources": f"{airport_1.id}, {airport_2.id}"})
+        res = self.client.get(
+            ROUTE_URL, data={"sources": f"{airport_1.id}, {airport_2.id}"}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -89,9 +107,15 @@ class AuthenticatedRouteApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_3, destination=airport_1)
         route_2 = sample_route(source=airport_1, destination=airport_2)
@@ -101,7 +125,11 @@ class AuthenticatedRouteApiTests(TestCase):
         serializer_route_2 = RouteListSerializer(route_2)
         serializer_route_3 = RouteListSerializer(route_3)
 
-        res = self.client.get(ROUTE_URL, data={"destinations": f"{airport_1.id}, {airport_2.id}"})
+        res = self.client.get(
+            ROUTE_URL, data={
+                "destinations": f"{airport_1.id}, {airport_2.id}"
+            }
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -116,9 +144,15 @@ class AuthenticatedRouteApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_1, destination=airport_2)
         route_2 = sample_route(source=airport_2, destination=airport_3)
@@ -128,7 +162,11 @@ class AuthenticatedRouteApiTests(TestCase):
         serializer_route_2 = RouteListSerializer(route_2)
         serializer_route_3 = RouteListSerializer(route_3)
 
-        res = self.client.get(ROUTE_URL, data={"source_codes": f"{airport_1.code}, {airport_2.code}"})
+        res = self.client.get(
+            ROUTE_URL, data={
+                "source_codes": f"{airport_1.code}, {airport_2.code}"
+            }
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -143,9 +181,15 @@ class AuthenticatedRouteApiTests(TestCase):
         city_2 = sample_city(name="Test City 2", country=country)
         city_3 = sample_city(name="Test City 3", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
-        airport_3 = sample_airport(name="Test Airport 3", city=city_3, code="SSS")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
+        airport_3 = sample_airport(
+            name="Test Airport 3", city=city_3, code="SSS"
+        )
 
         route_1 = sample_route(source=airport_3, destination=airport_1)
         route_2 = sample_route(source=airport_1, destination=airport_2)
@@ -155,7 +199,11 @@ class AuthenticatedRouteApiTests(TestCase):
         serializer_route_2 = RouteListSerializer(route_2)
         serializer_route_3 = RouteListSerializer(route_3)
 
-        res = self.client.get(ROUTE_URL, data={"destination_codes": f"{airport_1.code}, {airport_2.code}"})
+        res = self.client.get(
+            ROUTE_URL, data={
+                "destination_codes": f"{airport_1.code}, {airport_2.code}"
+            }
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["results"]), 2)
@@ -179,8 +227,12 @@ class AuthenticatedRouteApiTests(TestCase):
         city_1 = sample_city(name="Test City 1", country=country)
         city_2 = sample_city(name="Test City 2", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
 
         payload = {
             "source": airport_1.id,
@@ -194,7 +246,7 @@ class AuthenticatedRouteApiTests(TestCase):
         route = sample_route()
         url = detail_url("route", route.id)
         payload = {
-            "distance":  2000,
+            "distance": 2000,
         }
         res = self.client.patch(url, payload)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
@@ -211,9 +263,7 @@ class AdminRouteApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="admin@test.com",
-            password="testpassword",
-            is_staff=True
+            email="admin@test.com", password="testpassword", is_staff=True
         )
         self.client.force_authenticate(self.user)
 
@@ -223,8 +273,12 @@ class AdminRouteApiTests(TestCase):
         city_1 = sample_city(name="Test City 1", country=country)
         city_2 = sample_city(name="Test City 2", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
 
         payload = {
             "source": airport_1.id,
@@ -258,7 +312,9 @@ class AdminRouteApiTests(TestCase):
         country = sample_country()
 
         city_2 = sample_city(name="Test City 2", country=country)
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
 
         payload = {
             "source": 999999,
@@ -274,8 +330,12 @@ class AdminRouteApiTests(TestCase):
         city_1 = sample_city(name="Test City 1", country=country)
         city_2 = sample_city(name="Test City 2", country=country)
 
-        airport_1 = sample_airport(name="Test Airport 1", city=city_1, code="TTT")
-        airport_2 = sample_airport(name="Test Airport 2", city=city_2, code="EEE")
+        airport_1 = sample_airport(
+            name="Test Airport 1", city=city_1, code="TTT"
+        )
+        airport_2 = sample_airport(
+            name="Test Airport 2", city=city_2, code="EEE"
+        )
 
         payload = {
             "source": airport_1.id,

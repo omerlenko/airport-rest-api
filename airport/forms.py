@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+
 from airport.models import Flight
 
 
@@ -19,7 +20,13 @@ class FlightAdminForm(forms.ModelForm):
             for member in crew_members:
                 member_flights = member.flights.exclude(pk=flight_id)
                 for flight in member_flights:
-                    if flight.departure_time <= arrival and flight.arrival_time >= departure:
-                        raise ValidationError(f"Crew member {member} has another flight during this time.")
+                    if (
+                        flight.departure_time <= arrival
+                        and flight.arrival_time >= departure
+                    ):
+                        raise ValidationError(
+                            f"Crew member {member} has another "
+                            f"flight during this time."
+                        )
 
         return cleaned_data

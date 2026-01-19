@@ -3,6 +3,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
+
 from user.serializers import UserSerializer
 
 USER_CREATE_URL = reverse("user:create")
@@ -98,9 +99,7 @@ class AuthenticatedUserApiTests(TestCase):
         }
         tokens = self.client.post(TOKEN_URL, payload)
 
-        payload = {
-            "refresh": tokens.data["refresh"]
-        }
+        payload = {"refresh": tokens.data["refresh"]}
         res = self.client.post(TOKEN_REFRESH_URL, payload, format="json")
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -113,17 +112,13 @@ class AuthenticatedUserApiTests(TestCase):
         }
         tokens = self.client.post(TOKEN_URL, payload)
 
-        payload = {
-            "token": tokens.data["access"]
-        }
+        payload = {"token": tokens.data["access"]}
         res = self.client.post(TOKEN_VERIFY_URL, payload, format="json")
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_token_verify_rejects_invalid_token(self):
-        payload = {
-            "token": "invalid_token"
-        }
+        payload = {"token": "invalid_token"}
         res = self.client.post(TOKEN_VERIFY_URL, payload, format="json")
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -141,16 +136,16 @@ class AuthenticatedUserApiTests(TestCase):
         token_res = self.client.post(TOKEN_URL, payload, format="json")
         access = token_res.data["access"]
 
-        res = self.client.get(USER_MANAGE_URL, HTTP_AUTHORIZATION=f"Bearer {access}")
+        res = self.client.get(
+            USER_MANAGE_URL, HTTP_AUTHORIZATION=f"Bearer {access}"
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["email"], payload["email"])
 
     def test_me_updates_user_email(self):
         self.client.force_authenticate(self.user)
-        payload = {
-            "email": "updated_email@test.com"
-        }
+        payload = {"email": "updated_email@test.com"}
         res = self.client.patch(USER_MANAGE_URL, payload, format="json")
         self.user.refresh_from_db()
         serializer = UserSerializer(self.user)
@@ -160,9 +155,7 @@ class AuthenticatedUserApiTests(TestCase):
 
     def test_me_updates_user_password(self):
         self.client.force_authenticate(self.user)
-        payload = {
-            "password": "new_password"
-        }
+        payload = {"password": "new_password"}
         res = self.client.patch(USER_MANAGE_URL, payload, format="json")
         self.user.refresh_from_db()
 
