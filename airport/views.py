@@ -22,9 +22,10 @@ from airport.utils import params_to_ints, params_to_str, params_to_datetime, par
 
 class CountryViewSet(ModelViewSet):
     """
-    Read-only access to countries.
-    Non-safe methods allowed for admin.
-    No query parameters are supported.
+    Countries.
+    Read-only for non-admin users.
+    Admins can create/update/delete.
+    No query parameters supported.
     """
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
@@ -73,7 +74,7 @@ class CityViewSet(ModelViewSet):
                 ),
                 examples=[
                     OpenApiExample("Single value", value=[1]),
-                    OpenApiExample("Repeated params", value=[1, 2]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
                 ],
             )
 
@@ -105,7 +106,7 @@ class AirportViewSet(ModelViewSet):
 
     def get_queryset(self):
         queryset = self.queryset
-        cities = params_to_ints(self.request.query_params,"cities")
+        cities = params_to_ints(self.request.query_params, "cities")
 
         if cities:
             queryset = queryset.filter(city__id__in=cities)
@@ -125,7 +126,7 @@ class AirportViewSet(ModelViewSet):
                 ),
                 examples=[
                     OpenApiExample("Single value", value=[1]),
-                    OpenApiExample("Repeated params", value=[1, 2]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
                 ],
             )
 
@@ -139,6 +140,7 @@ class RouteViewSet(ModelViewSet):
     """
     Manage routes.
     Filters: sources/destinations (IDs) or source_codes/destination_codes (IATA).
+    If both sources and source_codes are provided, sources are used.
     """
     queryset = Route.objects.select_related(
         "source",
@@ -190,7 +192,7 @@ class RouteViewSet(ModelViewSet):
                 ),
                 examples=[
                     OpenApiExample("Single value", value=[1]),
-                    OpenApiExample("Repeated params", value=[1, 2]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
                 ],
             ),
             OpenApiParameter(
@@ -205,7 +207,7 @@ class RouteViewSet(ModelViewSet):
                 ),
                 examples=[
                     OpenApiExample("Single value", value=[1]),
-                    OpenApiExample("Repeated params", value=[1, 2]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
                 ],
             ),
             OpenApiParameter(
@@ -290,7 +292,7 @@ class AirplaneViewSet(ModelViewSet):
                 ),
                 examples=[
                     OpenApiExample("Single value", value=[1]),
-                    OpenApiExample("Repeated params", value=[1, 2]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
                 ],
             ),
         ],
@@ -391,6 +393,11 @@ class FlightViewSet(ModelViewSet):
 
         return queryset.distinct()
 
+    @extend_schema(
+        summary="List available seats for a flight",
+        description="Returns all seats on the flight's airplane that are not yet booked for this flight.",
+        responses=SeatListSerializer(many=True),
+    )
     @action(detail=True, methods=["GET"])
     def available_seats(self, request, *args, **kwargs):
         flight = self.get_object()
@@ -423,18 +430,24 @@ class FlightViewSet(ModelViewSet):
             ),
             OpenApiParameter(
                 name="departure_time",
-                description="Shows all flights after this point in time (UTC). Format: `YYYY-MM-DD HH:MM` (UTC).",
+                description="Shows all flights after this point in time. Format: `YYYY-MM-DD HH:MM`.",
                 required=False,
-                type=OpenApiTypes.DATETIME,
+                type=OpenApiTypes.STR,
+                examples=[
+                    OpenApiExample("Example", value="2026-01-01 10:30"),
+                ],
             ),
             OpenApiParameter(
                 name="departure_date",
                 description=(
-                        "Calendar date filter. If **one origin** is provided → origin-local day; "
-                        "otherwise → UTC day. Format: `YYYY-MM-DD`."
+                        "Calendar date filter. If **one origin** is provided - origin-local day; "
+                        "otherwise - UTC day. Format: `YYYY-MM-DD`."
                 ),
                 required=False,
                 type=OpenApiTypes.DATE,
+                examples=[
+                    OpenApiExample("Example", value="2026-01-01"),
+                ],
             ),
         ],
     )
@@ -448,6 +461,12 @@ class SeatClassViewSet(ModelViewSet):
 
 
 class SeatViewSet(ReadOnlyModelViewSet):
+    """
+    Seats (authenticated read-only).
+
+    Filters:
+      - airplanes: airplane IDs; comma-separated or repeated.
+    """
     queryset = Seat.objects.select_related(
         "airplane",
         "airplane__airplane_type",
@@ -476,9 +495,32 @@ class SeatViewSet(ReadOnlyModelViewSet):
 
         return queryset.distinct()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="airplanes",
+                type=OpenApiTypes.INT,
+                many=True,
+                location=OpenApiParameter.QUERY,
+                description=(
+                        "Filter by one or more airplane IDs. "
+                        "Supports both repeated parameters (`?airplanes=1&airplanes=2`) "
+                        "and comma-separated lists (`?airplanes=1,2`)."
+                ),
+                examples=[
+                    OpenApiExample("Single value", value=[1]),
+                    OpenApiExample("Multiple values", value=[1, 2]),
+                ],
+            )
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        """Get list of seats."""
+        return super().list(request, *args, **kwargs)
+
 class TicketViewSet(ReadOnlyModelViewSet):
     """
-    Manage tickets.
+    Read-only access to tickets.
 
     Filters:
       - users (admin only): array[int] — user IDs to include.
@@ -558,7 +600,6 @@ class TicketViewSet(ReadOnlyModelViewSet):
                 "**Filters:**\n"
                 "- `orders`, `flights`, `seat_classes`: comma-separated or repeated values.\n"
                 "- `price_min`, `price_max`: decimal strings (inclusive).\n\n"
-                "All datetimes in responses are UTC."
         ),
         parameters=[
             OpenApiParameter(
@@ -594,12 +635,14 @@ class TicketViewSet(ReadOnlyModelViewSet):
                 description="Minimum ticket price (decimal). Inclusive.",
                 required=False,
                 type=OpenApiTypes.NUMBER,
+                examples=[OpenApiExample("Min. price", value="99.99")],
             ),
             OpenApiParameter(
                 name="price_max",
                 description="Maximum ticket price (decimal). Inclusive.",
                 required=False,
                 type=OpenApiTypes.NUMBER,
+                examples=[OpenApiExample("Max. price", value="250.00")],
             ),
         ],
     )
@@ -607,10 +650,12 @@ class TicketViewSet(ReadOnlyModelViewSet):
         return super().list(request, *args, **kwargs)
 
 
-class OrderViewSet(mixins.CreateModelMixin,
-                   mixins.ListModelMixin,
-                   mixins.RetrieveModelMixin,
-                   viewsets.GenericViewSet):
+class OrderViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
     """
     Manage orders for the authenticated user.
     Results are always scoped to the current user.
@@ -631,17 +676,24 @@ class OrderViewSet(mixins.CreateModelMixin,
         return self.serializer_class
 
     def get_queryset(self):
+        qs = self.queryset
         if self.action == "retrieve":
-            self.queryset = self.queryset.prefetch_related(
-        "tickets",
-        "tickets__seat",
-        "tickets__seat__seat_class",
-        "tickets__seat__airplane",
-        "tickets__flight",
+            qs = qs.prefetch_related(
+                "tickets",
+                "tickets__seat",
+                "tickets__seat__seat_class",
+                "tickets__seat__airplane",
+                "tickets__flight",
+            )
+
+        return qs.filter(user=self.request.user)
+
+    @extend_schema(
+        summary="Create an order",
+        description="Creates an order for the authenticated user. Requires at least one ticket.",
+        request=OrderSerializer,
+        responses={201: OrderDetailSerializer},
     )
-
-        return super().get_queryset().filter(user=self.request.user)
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
