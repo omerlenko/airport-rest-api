@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 
 
 class Country(models.Model):
@@ -175,12 +175,23 @@ class Airplane(models.Model):
         AirplaneType, on_delete=models.PROTECT, related_name="airplanes"
     )
 
+    def _get_or_create_required_seat_classes(self):
+        first, _ = SeatClass.objects.get_or_create(
+            priority=0,
+            defaults={"name": "First", "multiplier": Decimal("3.00")},
+        )
+        business, _ = SeatClass.objects.get_or_create(
+            priority=1,
+            defaults={"name": "Business", "multiplier": Decimal("2.00")},
+        )
+        economy, _ = SeatClass.objects.get_or_create(
+            priority=2,
+            defaults={"name": "Economy", "multiplier": Decimal("1.00")},
+        )
+        return {"first": first, "business": business, "economy": economy}
+
     def generate_seats(self):
-        seat_class = {
-            "first": SeatClass.objects.get(priority=0),
-            "business": SeatClass.objects.get(priority=1),
-            "economy": SeatClass.objects.get(priority=2),
-        }
+        seat_class = self._get_or_create_required_seat_classes()
 
         for row in range(1, self.rows + 1):
             if row <= 4:
@@ -210,9 +221,11 @@ class Airplane(models.Model):
         self.full_clean()
         self.tail_number = self.tail_number.upper().strip()
         is_new = self.pk is None
-        super().save(*args, **kwargs)
-        if is_new:
-            self.generate_seats()
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if is_new:
+                self.generate_seats()
 
     def __str__(self):
         return f"{self.airplane_type} ({self.tail_number})"
